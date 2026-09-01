@@ -371,6 +371,7 @@
       <h2>Mileage per pair of shoes</h2>
       <div class="chart-tools">
         <div class="range-tabs" id="shoe-chart-range"></div>
+        <div class="range-tabs" id="shoe-chart-gran"></div>
       </div>
       <div class="chart-summary" id="shoe-chart-summary"></div>
       <div id="shoe-chart"></div>
@@ -485,6 +486,7 @@ let unit = "metric";
 let mileRange = "30d";
 let mileGran = "week";
 let shoeRange = "30d";
+let shoeGran = "week";
 let typeRange = "30d";
 let typeGran = "day";
 let surfRange = "30d";
@@ -974,23 +976,31 @@ function renderMileageOverTime() {
 }
 
 function renderShoeChart() {
-  const source = bucketByTime(shoeRange, DB.entries, "day");
-  const counts = {};
+  const source = bucketByTime(shoeRange, DB.entries, shoeGran);
+  const buckets = {};
+  const shoeTotals = {};
+  let totalNum = 0;
   for (const k in source) {
     for (const e of source[k]) {
       const r = DB.runs[e.runId];
       const shoeName = (r && shoeById(r.shoesId)) ? shoeById(r.shoesId).name : "(no shoes)";
-      counts[shoeName] = (counts[shoeName] || 0) + (e.distanceM || 0);
+      const v = mToNum(e.distanceM || 0);
+      totalNum += v;
+      buckets[k] = buckets[k] || {};
+      buckets[k][shoeName] = (buckets[k][shoeName] || 0) + v;
+      shoeTotals[shoeName] = (shoeTotals[shoeName] || 0) + v;
     }
   }
-  const pairs = Object.entries(counts).map(([k, v]) => [k, mToNum(v)]).sort((a, b) => b[1] - a[1]);
+  const shoeOrder = Object.keys(shoeTotals).sort((a, b) => shoeTotals[b] - shoeTotals[a]);
   const unitL = distLabel();
+  const mon = MONTH_NAMES;
+  const labelFn = shoeGran === "week" ? (k => "w/o " + k.slice(5)) : (shoeGran === "month" ? (k => mon[parseInt(k.slice(5, 7), 10) - 1]) : (k => k.slice(5)));
   resetPalette();
-  renderBarChart("shoe-chart", "shoe-chart-summary", pairs,
-    v => v.toFixed(2) + " " + unitL, k => k,
-    `${RANGE_LABEL[shoeRange]}: ${pairs.length} pair${pairs.length===1?"":"s"}`,
-    (k) => palForKey(k));
+  renderStackedChart("shoe-chart", "shoe-chart-summary", buckets, shoeOrder, labelFn,
+    (v) => v.toFixed(2) + " " + unitL,
+    `${RANGE_LABEL[shoeRange]} · ${GRAN_LABEL[shoeGran]}: ${shoeOrder.length} pair${shoeOrder.length===1?"":"s"} · ${totalNum.toFixed(2)} ${unitL}`);
   syncRangeTabs("shoe-chart-range", shoeRange);
+  syncRangeTabs("shoe-chart-gran", shoeGran);
 }
 
 function renderCategoryChart(which, valFn) {
@@ -1114,6 +1124,7 @@ function getDefaultRange(boxId) {
   if (boxId === "mile-range") return mileRange;
   if (boxId === "mile-gran") return mileGran;
   if (boxId === "shoe-chart-range") return shoeRange;
+  if (boxId === "shoe-chart-gran") return shoeGran;
   if (boxId === "type-range") return typeRange;
   if (boxId === "type-gran") return typeGran;
   if (boxId === "surf-range") return surfRange;
@@ -1127,6 +1138,7 @@ function setupAllTabs() {
   setupRangeTabs("mile-range", r => { mileRange = r; }, "range");
   setupRangeTabs("mile-gran", r => { mileGran = r; }, "gran");
   setupRangeTabs("shoe-chart-range", r => { shoeRange = r; }, "range");
+  setupRangeTabs("shoe-chart-gran", r => { shoeGran = r; }, "gran");
   setupRangeTabs("type-range", r => { typeRange = r; }, "range");
   setupRangeTabs("type-gran", r => { typeGran = r; }, "gran");
   setupRangeTabs("surf-range", r => { surfRange = r; }, "range");
