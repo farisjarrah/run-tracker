@@ -8,6 +8,9 @@ Even on github pages, no data is transmitted anywhere and you are only opening u
 
 If you save your file to icloud storage you can use the same file for all of your devices, probably works with any other filesystem integration type too (like google drive), but untested.
 
+### Saving on iPhone/iPad (iOS Safari)
+On iOS, tapping **Save file** opens the share sheet — choose **Save to Files**, browse to the folder that holds `run-data.json` (iCloud Drive, not "Recents"), and when it asks, pick **Replace** so you don't end up with `run-data.json 2`. Always open the file from **Browse → iCloud Drive** after saving it the first time so it's downloaded locally — "Recents" only shows iCloud files that are already on the device.
+
 ## WARNING:
 This was vibecoded using the free OpenCode Big Pickle AI Model 09/2026.
 
