@@ -1,0 +1,1409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Running Tracker</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --card: #ffffff;
+    --border: #e3e3df;
+    --text: #1f1f1d;
+    --muted: #76766f;
+    --accent: #0f766e;
+    --accent-dark: #0b5c55;
+    --accent-soft: #ecfdf5;
+    --danger: #dc2626;
+    --grid: #e0e0dc;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  html[data-theme="dark"] {
+    --bg: #1a1b1e;
+    --card: #25262b;
+    --border: #3a3b41;
+    --text: #ececec;
+    --muted: #9a9a9f;
+    --accent: #2dd4bf;
+    --accent-dark: #14b8a6;
+    --accent-soft: #0f2023;
+    --danger: #f87171;
+    --grid: #3a3b41;
+    --shadow: 0 1px 3px rgba(0,0,0,0.5);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    transition: background .2s, color .2s;
+  }
+  .hidden { display: none !important; }
+
+  /* ---------- Load screen ---------- */
+  #load-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .load-box {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+    padding: 40px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+  }
+  .load-box h1 { margin: 0 0 6px; font-size: 26px; }
+  .load-box p { color: var(--muted); margin: 0 0 24px; }
+  .load-box label.drop {
+    display: block;
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 32px 20px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .load-box label.drop:hover, .load-box label.drop.drag {
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+  .load-box label.drop input { display: none; }
+  #sample-link { display: block; margin-top: 18px; color: var(--accent); cursor: pointer; font-size: 14px; }
+  #sample-link:hover { text-decoration: underline; }
+  #load-err { color: var(--danger); margin-top: 12px; font-size: 14px; min-height: 18px; }
+
+  /* ---------- App shell ---------- */
+  #app { max-width: 1000px; margin: 0 auto; padding: 20px 16px 60px; }
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  header.topbar h1 { font-size: 22px; margin: 0; }
+  .topbar-actions { display: flex; gap: 8px; align-items: center; }
+  .file-name { color: var(--muted); font-size: 13px; margin-left: 8px; font-weight: normal; }
+  .theme-toggle {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px;
+    background: var(--card); font-size: 13px; color: var(--muted);
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  .theme-toggle:hover { color: var(--text); border-color: var(--accent); }
+  .unit-toggle {
+    display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
+    padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px;
+    background: var(--card); font-size: 13px; color: var(--muted);
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  .unit-toggle:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ---------- Nav tabs ---------- */
+  nav.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 20px; flex-wrap: wrap; }
+  nav.tabs button {
+    border: none; background: none; padding: 10px 16px; font-size: 15px;
+    color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  nav.tabs button.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+
+  /* ---------- Cards ---------- */
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: var(--shadow); padding: 20px; margin-bottom: 20px;
+    transition: background .2s, border-color .2s;
+  }
+  .card h2 { margin: 0 0 14px; font-size: 16px; }
+  .card h3 { margin: 0 0 10px; font-size: 14px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+
+  /* ---------- Summary ---------- */
+  .summary { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .summary .big { font-size: 34px; font-weight: 700; }
+  .summary .unit { color: var(--muted); }
+  .stat-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .stat-box {
+    flex: 1; min-width: 120px; background: var(--accent-soft); border-radius: 8px;
+    padding: 12px; text-align: center;
+  }
+  .stat-box .v { font-size: 20px; font-weight: 700; }
+  .stat-box .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+
+  /* ---------- Add form ---------- */
+  .add-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .add-form .field { display: flex; flex-direction: column; gap: 4px; }
+  .add-form label { font-size: 12px; color: var(--muted); }
+  input, select, textarea, button { font-family: inherit; font-size: 14px; }
+  input, select, textarea {
+    padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--card); color: var(--text); transition: background .2s, color .2s, border-color .2s;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .btn {
+    padding: 8px 14px; border: 1px solid var(--border); border-radius: 6px;
+    background: var(--card); color: var(--text); cursor: pointer; font-weight: 500;
+    transition: background .15s, border-color .15s;
+  }
+  .btn:hover { background: var(--accent-soft); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-dark); }
+  .btn.danger { color: var(--danger); border-color: rgba(220,38,38,.4); }
+  .btn.danger:hover { background: rgba(220,38,38,.1); }
+  .btn.small { padding: 4px 8px; font-size: 13px; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .form-hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+
+  /* ---------- Tables ---------- */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; font-weight: 600; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr:hover td { background: var(--accent-soft); }
+  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 12px;
+    background: var(--accent-soft); color: var(--accent-dark); font-size: 12px; font-weight: 600;
+  }
+  .mutednote { color: var(--muted); font-size: 12px; }
+
+  /* ---------- Registry expandable rows ---------- */
+  .reg-toggle { cursor: pointer; font-weight: 600; }
+  .reg-toggle:hover { color: var(--accent-dark); }
+  .chev { display: inline-block; width: 12px; color: var(--muted); }
+  tr.reg-row.open td { background: var(--accent-soft); }
+  tr.reg-detail td { background: var(--card); padding: 4px 10px 10px 30px; }
+  tr.reg-detail:hover td { background: var(--card); }
+  .reg-notes { border-left: 2px solid var(--border); padding-left: 10px; }
+  .reg-note { padding: 6px 8px; }
+  .reg-note + .reg-note { border-top: 1px solid var(--border); }
+  .reg-note-date { font-weight: 600; margin-right: 8px; }
+  .reg-note-meta { color: var(--muted); font-size: 12px; margin-right: 8px; }
+  .reg-note-text { font-size: 13px; }
+
+  /* ---------- History ---------- */
+  .hist-filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 12px; }
+  .hist-filters .field { display: flex; flex-direction: column; gap: 4px; }
+  .hist-filters label { font-size: 12px; color: var(--muted); }
+  .hist-presets { display: flex; gap: 4px; flex-wrap: wrap; margin-left: 4px; }
+  .hist-summary { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+
+  /* ---------- Charts ---------- */
+  .range-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+  .range-tabs button {
+    border: 1px solid var(--border); background: var(--card); color: var(--muted);
+    padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 13px;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .range-tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .chart-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .chart-summary { color: var(--muted); font-size: 14px; margin-bottom: 12px; }
+
+  .chart-wrap { display: flex; gap: 0; align-items: stretch; }
+  .y-axis {
+    display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end;
+    padding-right: 8px; font-size: 11px; color: var(--muted); height: 180px; min-width: 48px;
+  }
+  .y-axis span { line-height: 1; transform: translateY(-50%); }
+  .bars { flex: 1; display: flex; gap: 1px; align-items: stretch; height: 180px; border-left: 1px solid var(--grid); padding-left: 1px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; position: relative; }
+  .bar { width: 100%; max-width: 48px; background: var(--accent); border-radius: 4px 4px 0 0; position: relative; }
+  .bar-wrap:hover .bar { background: var(--accent-dark); }
+  .bar-label { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); }
+  .bar-tip {
+    position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg); font-size: 11px; padding: 3px 8px; border-radius: 4px;
+    white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .1s; z-index: 2;
+  }
+  .bar-wrap:hover .bar-tip { opacity: 1; }
+  .no-data { color: var(--muted); text-align: center; padding: 30px 0; }
+
+  footer.note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<!-- ================= LOAD SCREEN ================= -->
+<div id="load-screen">
+  <div class="load-box">
+    <h1>Running Tracker</h1>
+    <p>Load your JSON data file to get started.</p>
+    <label class="drop" id="drop-zone">
+      <input type="file" id="file-input" accept=".json">
+      <strong>Click to choose a file</strong><br>
+      or drop it here
+    </label>
+    <div id="load-err"></div>
+    <span id="sample-link">No file yet? Download a sample to try it</span><br><br>
+    <button class="btn" id="fresh-link">Or start from scratch (empty file)</button>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div id="app" class="hidden">
+  <header class="topbar">
+    <h1>Running Tracker <span class="file-name" id="file-name"></span></h1>
+    <div class="topbar-actions">
+      <button class="unit-toggle" id="unit-toggle" title="Switch between km and miles">Units: <span id="unit-label">km</span></button>
+      <button class="theme-toggle" id="theme-toggle" title="Toggle dark / light mode"><span id="theme-emoji">🌙</span><span id="theme-label"> Dark</span></button>
+      <button class="btn" id="new-file-btn" title="Start over with a fresh empty file">New</button>
+      <button class="btn primary" id="save-btn">Save file</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-view="home">Home</button>
+    <button class="tab" data-view="history">History</button>
+    <button class="tab" data-view="runs">Runs</button>
+    <button class="tab" data-view="shoes">Shoes</button>
+  </nav>
+
+  <!-- HOME -->
+  <div class="view" id="view-home">
+    <div class="card">
+      <h2>Add run</h2>
+      <form class="add-form" id="add-form">
+        <div class="field">
+          <label for="pick-run">Or pick an existing run</label>
+          <select id="pick-run" style="width:200px">
+            <option value="">— select a run —</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="add-name">Run name</label>
+          <input id="add-name" list="run-list" placeholder="Lake Loop / 5k" autocomplete="off" required style="width:170px">
+        </div>
+        <div class="field">
+          <label for="add-datetime">Date &amp; time</label>
+          <input id="add-datetime" type="datetime-local" style="width:200px">
+        </div>
+        <div class="field">
+          <label for="add-distance">Distance</label>
+          <input id="add-distance" type="number" min="0" step="any" placeholder="5" style="width:80px" title="in your selected unit">
+        </div>
+        <div class="field">
+          <label for="add-dur">Duration (min)</label>
+          <input id="add-dur" type="number" min="0" step="any" placeholder="25" style="width:80px">
+        </div>
+        <div class="field">
+          <label for="add-elev">Elev gain</label>
+          <input id="add-elev" type="number" step="any" placeholder="0" style="width:80px" title="in your selected unit">
+        </div>
+        <div class="field">
+          <label for="add-location">Location</label>
+          <input id="add-location" type="text" list="location-list" placeholder="Park" style="width:120px">
+        </div>
+        <div class="field">
+          <label for="add-surface">Surface</label>
+          <input id="add-surface" type="text" list="surface-list" placeholder="trail" style="width:90px">
+        </div>
+        <div class="field">
+          <label for="add-shoes">Shoes</label>
+          <input id="add-shoes" type="text" list="shoes-list" placeholder="Pegasus 39" style="width:130px">
+        </div>
+        <div class="field">
+          <label for="add-type">Workout type</label>
+          <input id="add-type" type="text" list="type-list" placeholder="easy run" style="width:110px">
+        </div>
+        <div class="field">
+          <label for="add-effort">Effort (1-10)</label>
+          <input id="add-effort" type="number" min="1" max="10" value="5" style="width:70px">
+        </div>
+        <div class="field">
+          <label for="add-notes">Notes</label>
+          <input id="add-notes" type="text" list="notes-list" placeholder="felt strong" style="width:180px">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button type="submit" class="btn primary">Add run</button>
+        </div>
+      </form>
+      <datalist id="run-list"></datalist>
+      <datalist id="location-list"></datalist>
+      <datalist id="surface-list"></datalist>
+      <datalist id="shoes-list"></datalist>
+      <datalist id="type-list"></datalist>
+      <datalist id="notes-list"></datalist>
+      <p class="form-hint">
+        Picking a run auto-fills its distance, duration, location, surface, shoes, and workout type
+        (you can still override any of them). Distance, elevation, and pace display follow your
+        km/mi unit toggle in the top bar. Effort is your perceived exertion, 1-10.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="summary">
+        <span class="big" id="total-runs">0</span>
+        <span class="unit">runs</span>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="v" id="stat-distance">0</div><div class="l">total distance</div></div>
+        <div class="stat-box"><div class="v" id="stat-elev">0</div><div class="l">total climb</div></div>
+        <div class="stat-box"><div class="v" id="stat-time">0h</div><div class="l">total time</div></div>
+        <div class="stat-box"><div class="v" id="stat-avgpace">—</div><div class="l">avg pace</div></div>
+      </div>
+      <h2 style="margin-top:16px;">Recent runs</h2>
+      <div id="recent-runs"><p class="no-data" style="padding:10px 0;">No runs yet.</p></div>
+    </div>
+
+    <div class="card">
+      <h2>Mileage over time</h2>
+      <div class="chart-tools">
+        <div class="range-tabs" id="mile-range"></div>
+        <div class="range-tabs" id="mile-gran"></div>
+      </div>
+      <div class="chart-summary" id="mile-summary"></div>
+      <div id="mile-chart"></div>
+    </div>
+    <div class="card">
+      <h2>Mileage per pair of shoes</h2>
+      <div class="range-tabs" id="shoe-chart-range"></div>
+      <div class="chart-summary" id="shoe-chart-summary"></div>
+      <div id="shoe-chart"></div>
+    </div>
+    <div class="card">
+      <h2>Workouts by type</h2>
+      <div class="range-tabs" id="type-range"></div>
+      <div class="chart-summary" id="type-summary"></div>
+      <div id="type-chart"></div>
+    </div>
+    <div class="card">
+      <h2>Runs by surface</h2>
+      <div class="range-tabs" id="surf-range"></div>
+      <div class="chart-summary" id="surf-summary"></div>
+      <div id="surf-chart"></div>
+    </div>
+    <div class="card">
+      <h2>Workouts by effort</h2>
+      <div class="range-tabs" id="effort-range"></div>
+      <div class="chart-summary" id="effort-summary"></div>
+      <div id="effort-chart"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="view hidden" id="view-history">
+    <div class="card">
+      <h2>History</h2>
+      <div class="hist-filters">
+        <div class="field">
+          <label for="hist-from">From</label>
+          <input type="date" id="hist-from">
+        </div>
+        <div class="field">
+          <label for="hist-to">To</label>
+          <input type="date" id="hist-to">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn" id="hist-apply" title="Filter the history to this date range">Apply</button>
+        </div>
+        <div class="hist-presets">
+          <button class="btn small hist-preset" data-preset="week">This week</button>
+          <button class="btn small hist-preset" data-preset="month">This month</button>
+          <button class="btn small hist-preset" data-preset="lastmonth">Last month</button>
+          <button class="btn small hist-preset" data-preset="year">Year to date</button>
+          <button class="btn small hist-preset" data-preset="all">All</button>
+        </div>
+      </div>
+      <p class="hist-summary" id="hist-summary"></p>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <!-- RUNS REGISTRY -->
+  <div class="view hidden" id="view-runs">
+    <div class="card">
+      <h2>Runs</h2>
+      <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
+        Runs are stored once. Editing a run here updates it everywhere it's used.
+        Click a run name to expand it and see every time you've done it.
+      </p>
+      <div id="runs-table"></div>
+    </div>
+  </div>
+
+  <!-- SHOES -->
+  <div class="view hidden" id="view-shoes">
+    <div class="card">
+      <h2>Shoes</h2>
+      <div class="add-form" style="margin-bottom:14px;">
+        <div class="field">
+          <label for="shoe-name">Shoe name</label>
+          <input id="shoe-name" type="text" placeholder="Pegasus 39" style="width:150px">
+        </div>
+        <div class="field">
+          <label for="shoe-brand">Brand</label>
+          <input id="shoe-brand" type="text" list="brand-list" placeholder="Nike" style="width:110px">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <button class="btn primary" id="shoe-add-btn">Add shoe</button>
+        </div>
+      </div>
+      <datalist id="brand-list"></datalist>
+      <p style="color:var(--muted);font-size:13px;margin:0 0 12px;">
+        Click a shoe to expand it and see the mileage logged in it.
+      </p>
+      <div id="shoes-table"></div>
+    </div>
+  </div>
+
+  <footer class="note">Data stays in your browser. Click "Save file" to download the updated JSON.</footer>
+</div>
+
+<script>
+"use strict";
+
+/* ================= State ================= */
+let DB = { shoes: {}, runs: {}, entries: [] };
+let filename = "run-data.json";
+let unit = "metric";
+let mileRange = "month";
+let mileGran = "week";
+let shoeRange = "month";
+let typeRange = "month";
+let surfRange = "month";
+let effortRange = "month";
+let histFrom = null;
+let histTo = null;
+const RANGES = ["month", "year", "all"];
+const RANGE_LABEL = { month: "This month", year: "This year", all: "All time" };
+const GRANS = ["week", "month"];
+const GRAN_LABEL = { week: "By week", month: "By month" };
+const M_PER_KM = 1000;
+const M_PER_MI = 1609.344;
+const SURFACE_SUGGESTIONS = ["trail", "track", "pavement", "dirt", "grass", "treadmill"];
+const TYPE_SUGGESTIONS = ["easy run", "tempo", "intervals", "long run", "recovery", "race", "hill repeats", "fartlek"];
+
+/* ================= Theme ================= */
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const dark = theme === "dark";
+  document.getElementById("theme-emoji").textContent = dark ? "☀️" : "🌙";
+  document.getElementById("theme-label").textContent = dark ? " Light" : " Dark";
+}
+(function initTheme() {
+  const stored = localStorage.getItem("run-theme");
+  const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  applyTheme(stored || (prefersDark ? "dark" : "light"));
+})();
+document.getElementById("theme-toggle").addEventListener("click", () => {
+  applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  localStorage.setItem("run-theme", document.documentElement.getAttribute("data-theme"));
+});
+
+/* ================= Units ================= */
+function applyUnit(u) {
+  unit = u;
+  document.getElementById("unit-label").textContent = u === "metric" ? "km" : "mi";
+  localStorage.setItem("run-unit", u);
+}
+function distLabel() { return unit === "metric" ? "km" : "mi"; }
+function elevLabel() { return unit === "metric" ? "m" : "ft"; }
+function mToNum(m) { return m / (unit === "metric" ? 1000 : M_PER_MI); }
+function numToM(v) { return v * (unit === "metric" ? 1000 : M_PER_MI); }
+function eleMToNum(m) { return unit === "metric" ? m : m * 3.28084; }
+function numToEleM(v) { return unit === "metric" ? v : v / 3.28084; }
+function fmtDist(m, dec) {
+  const n = mToNum(m);
+  const d = (dec != null) ? dec : (n < 10 ? 2 : 1);
+  return n.toFixed(d);
+}
+function fmtPace(secPerM) {
+  const perUnit = secPerM * (unit === "metric" ? 1000 : M_PER_MI);
+  return formatSecAsPace(perUnit);
+}
+function formatSecAsPace(sec) {
+  if (!isFinite(sec) || sec <= 0) return "—";
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec - m * 60);
+  return m + ":" + String(s).padStart(2, "0");
+}
+function fmtHours(totalSec) {
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  if (h > 0) return h + "h " + m + "m";
+  return m + "m";
+}
+(function initUnit() {
+  const stored = localStorage.getItem("run-unit");
+  applyUnit(stored === "imperial" ? "imperial" : "metric");
+})();
+document.getElementById("unit-toggle").addEventListener("click", () => {
+  applyUnit(unit === "metric" ? "imperial" : "metric");
+  renderAll();
+});
+
+/* ================= Helpers ================= */
+function todayISO() { return toISO(new Date()); }
+function toISO(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function nextId(prefix, obj) {
+  let n = 1;
+  while (obj[prefix + n]) n++;
+  return prefix + n;
+}
+function newEntryId() {
+  let n = 1;
+  while (DB.entries.some(c => c.id === n)) n++;
+  return n;
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[c]));
+}
+function fmtDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso.slice(0, 10) + "T00:00:00");
+  if (isNaN(d)) return iso.slice(0, 10);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function parseDate(iso) {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+function emptyDB() { return { shoes: {}, runs: {}, entries: [] }; }
+function download() {
+  const blob = new Blob([JSON.stringify(DB, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function searchTerm(name) { return (name || "").toLowerCase().replace(/\s+/g, ""); }
+function findMatchingRun(name) {
+  const q = searchTerm(name);
+  for (const id in DB.runs) {
+    if (searchTerm(DB.runs[id].name) === q) return DB.runs[id];
+  }
+  return null;
+}
+function findMatchingShoe(name) {
+  const q = searchTerm(name);
+  for (const id in DB.shoes) {
+    if (searchTerm(DB.shoes[id].name) === q) return DB.shoes[id];
+  }
+  return null;
+}
+function shoeById(id) { return DB.shoes[id] || null; }
+function shoeIdForName(name) {
+  const s = findMatchingShoe(name);
+  if (s) return Object.keys(DB.shoes).find(k => DB.shoes[k] === s);
+  const id = nextId("s", DB.shoes);
+  DB.shoes[id] = { name: (name || "").trim(), brand: "" };
+  return id;
+}
+
+/* ================= Rendering ================= */
+function renderAll() {
+  renderSuggestionLists();
+  renderRunList();
+  renderHome();
+  renderHistory();
+  renderRunsList();
+  renderShoesList();
+  renderCharts();
+  renderUnitToggle();
+}
+
+function uniqueValues(arr) {
+  const seen = new Set();
+  const out = [];
+  for (const v of arr) {
+    const s = (v || "").trim();
+    if (s && !seen.has(s)) { seen.add(s); out.push(s); }
+  }
+  return out;
+}
+function fillList(id, values) {
+  document.getElementById(id).innerHTML =
+    values.map(v => `<option value="${esc(v)}"></option>`).join("");
+}
+
+function renderSuggestionLists() {
+  const locs = [], surfs = [], types = [], notes = [], brands = [];
+  for (const id in DB.runs) {
+    const r = DB.runs[id];
+    if (r.location) locs.push(r.location);
+    if (r.surface) surfs.push(r.surface);
+    if (r.workoutType) types.push(r.workoutType);
+  }
+  for (const e of DB.entries) {
+    if (e.notes) notes.push(e.notes);
+  }
+  for (const id in DB.shoes) {
+    if (DB.shoes[id].brand) brands.push(DB.shoes[id].brand);
+  }
+  fillList("location-list", uniqueValues(locs));
+  fillList("surface-list", uniqueValues([...SURFACE_SUGGESTIONS, ...surfs]));
+  fillList("type-list", uniqueValues([...TYPE_SUGGESTIONS, ...types]));
+  fillList("notes-list", uniqueValues(notes));
+  fillList("brand-list", uniqueValues(brands));
+  const shoes = Object.values(DB.shoes).map(s => s.name);
+  fillList("shoes-list", uniqueValues(shoes));
+}
+
+function renderRunList() {
+  const dl = document.getElementById("run-list");
+  dl.innerHTML = Object.values(DB.runs)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(r => `<option value="${esc(r.name)}"></option>`)
+    .join("");
+
+  const pick = document.getElementById("pick-run");
+  const current = pick.value;
+  pick.innerHTML = '<option value="">— select a run —</option>' +
+    Object.entries(DB.runs)
+      .sort((a, b) => a[1].name.localeCompare(b[1].name))
+      .map(([id, r]) => `<option value="${esc(id)}" ${id === current ? "selected" : ""}>${esc(r.name)}</option>`)
+      .join("");
+}
+
+document.getElementById("pick-run").addEventListener("change", e => {
+  const id = e.target.value;
+  if (!id) return;
+  const r = DB.runs[id];
+  if (!r) return;
+  document.getElementById("add-name").value = r.name;
+  document.getElementById("add-distance").value = r.distanceM ? mToNum(r.distanceM).toFixed(2) : "";
+  document.getElementById("add-dur").value = r.durationS ? (r.durationS / 60).toFixed(1) : "";
+  document.getElementById("add-elev").value = r.elevGainM != null ? eleMToNum(r.elevGainM).toFixed(0) : "";
+  document.getElementById("add-location").value = r.location || "";
+  document.getElementById("add-surface").value = r.surface || "";
+  document.getElementById("add-shoes").value = (shoeById(r.shoesId) ? shoeById(r.shoesId).name : "") || "";
+  document.getElementById("add-type").value = r.workoutType || "";
+  document.getElementById("add-name").focus();
+  e.target.value = "";
+});
+
+/* ================= Home ================= */
+function entryPace(e) {
+  if (e.distanceM > 0 && e.durationS > 0) return e.durationS / e.distanceM;
+  return null;
+}
+function formulaPace() {
+  let totalM = 0, totalS = 0;
+  for (const e of DB.entries) { totalM += e.distanceM || 0; totalS += e.durationS || 0; }
+  return totalM > 0 ? { m: totalM, s: totalS, pace: totalS / totalM } : null;
+}
+
+function renderHome() {
+  document.getElementById("total-runs").textContent = DB.entries.length;
+  let totalM = 0, totalS = 0, totalElev = 0;
+  for (const e of DB.entries) { totalM += e.distanceM || 0; totalS += e.durationS || 0; totalElev += e.elevGainM || 0; }
+  document.getElementById("stat-distance").textContent = fmtDist(totalM, 2) + " " + distLabel();
+  document.getElementById("stat-elev").textContent = Math.round(eleMToNum(totalElev)) + " " + elevLabel();
+  document.getElementById("stat-time").textContent = fmtHours(totalS);
+  const ap = formulaPace();
+  document.getElementById("stat-avgpace").textContent = ap ? fmtPace(ap.pace) + " /" + distLabel() : "—";
+
+  const box = document.getElementById("recent-runs");
+  if (DB.entries.length === 0) {
+    box.innerHTML = '<p class="no-data" style="padding:10px 0;">No runs yet.</p>';
+  } else {
+    const last = DB.entries.slice().sort((a, b) => (b.datetime || "").localeCompare(a.datetime || "")).slice(0, 10);
+    box.innerHTML = runsTable(last);
+  }
+}
+
+function runsTable(entries) {
+  return `<table>
+    <thead><tr><th>Date</th><th>Name</th><th class="num">Dist</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Elev</th><th>Surface</th><th>Shoes</th><th>Type</th><th class="num">Effort</th><th>Notes</th><th></th></tr></thead>
+    <tbody>
+      ${entries.map(e => runsRow(e)).join("")}
+    </tbody>
+  </table>`;
+}
+
+function runsRow(e) {
+  const r = DB.runs[e.runId];
+  const pace = entryPace(e);
+  return `<tr>
+    <td>${fmtDate(e.datetime)}${e.datetime && e.datetime.length > 10 ? "<span class='mutednote'> " + esc(e.datetime.slice(11, 16)) + "</span>" : ""}</td>
+    <td>${esc(r ? r.name : "—")}</td>
+    <td class="num">${fmtDist(e.distanceM || 0, 2)} ${distLabel()}</td>
+    <td class="num">${fmtHours(e.durationS || 0)}</td>
+    <td class="num">${pace ? fmtPace(pace) + " /" + distLabel() : "—"}</td>
+    <td class="num">${e.elevGainM ? "+" + Math.round(eleMToNum(e.elevGainM)) : "—"} ${e.elevGainM ? elevLabel() : ""}</td>
+    <td>${esc(r ? (r.surface || "") : "")}</td>
+    <td>${shoeById(r ? r.shoesId : "") ? esc(shoeById(r.shoesId).name) : ""}</td>
+    <td>${esc(r ? (r.workoutType || "") : "")}</td>
+    <td class="num">${e.effort ?? "—"}</td>
+    <td>${esc(e.notes || "")}</td>
+    <td><div class="row-actions">
+      <button class="btn small" onclick="editEntry(${e.id})">Edit</button>
+      <button class="btn small danger" onclick="delEntry(${e.id})">Del</button>
+    </div></td>
+  </tr>`;
+}
+
+window.delEntry = function(id) {
+  if (!confirm("Delete this run?")) return;
+  DB.entries = DB.entries.filter(e => e.id !== id);
+  renderAll();
+};
+
+/* ================= Add form ================= */
+document.getElementById("add-form").addEventListener("submit", e => {
+  e.preventDefault();
+  const name = document.getElementById("add-name").value.trim();
+  if (!name) return;
+  const distNum = parseFloat(document.getElementById("add-distance").value);
+  const distanceM = distNum > 0 ? numToM(distNum) : 0;
+  const durMin = parseFloat(document.getElementById("add-dur").value);
+  const durationS = durMin > 0 ? durMin * 60 : 0;
+  const elevNum = parseFloat(document.getElementById("add-elev").value);
+  const elevGainM = elevNum > 0 ? numToEleM(elevNum) : 0;
+  const datetime = document.getElementById("add-datetime").value || new Date().toISOString().slice(0, 16);
+  const location = document.getElementById("add-location").value.trim();
+  const surface = document.getElementById("add-surface").value.trim().toLowerCase();
+  const shoeName = document.getElementById("add-shoes").value.trim();
+  const workoutType = document.getElementById("add-type").value.trim();
+  const effort = clamp10(document.getElementById("add-effort").value);
+  const notes = document.getElementById("add-notes").value.trim();
+
+  let shoesId = "";
+  if (shoeName) shoesId = shoeIdForName(shoeName);
+
+  const match = findMatchingRun(name);
+  let runId;
+  if (match) {
+    runId = Object.keys(DB.runs).find(k => DB.runs[k] === match);
+    match.location = location;
+    match.surface = surface;
+    match.distanceM = distanceM || match.distanceM;
+    match.durationS = durationS || match.durationS;
+    match.elevGainM = elevGainM || match.elevGainM;
+    match.shoesId = shoesId || match.shoesId;
+    match.workoutType = workoutType || match.workoutType;
+  } else {
+    runId = nextId("r", DB.runs);
+    DB.runs[runId] = { name, distanceM, durationS, location, surface, shoesId, elevGainM, elevLossM: 0, workoutType };
+  }
+
+  DB.entries.push({
+    id: newEntryId(),
+    datetime: datetime,
+    runId: runId,
+    distanceM: distanceM,
+    durationS: durationS,
+    elevGainM: elevGainM,
+    effort: effort,
+    notes: notes
+  });
+
+  document.getElementById("add-name").value = "";
+  document.getElementById("add-distance").value = "";
+  document.getElementById("add-dur").value = "";
+  document.getElementById("add-elev").value = "";
+  document.getElementById("add-datetime").value = "";
+  document.getElementById("add-location").value = "";
+  document.getElementById("add-surface").value = "";
+  document.getElementById("add-shoes").value = "";
+  document.getElementById("add-type").value = "";
+  document.getElementById("add-notes").value = "";
+  renderAll();
+});
+
+function clamp10(v) {
+  const n = parseInt(v, 10);
+  if (isNaN(n)) return null;
+  return Math.max(1, Math.min(10, n));
+}
+
+/* ================= Charts ================= */
+function bucketByTime(range, data, key) {
+  const today = todayISO();
+  const map = {};
+  const push = (k, c) => { (map[k] = map[k] || []).push(c); };
+  for (const e of data) {
+    const d = (e.datetime || "").slice(0, 10);
+    if (!d) continue;
+    let k;
+    if (key === "week") k = weekKey(d);
+    else if (key === "month") k = d.slice(0, 7);
+    else k = d;
+    if (range === "month") {
+      if (d.slice(0, 7) === today.slice(0, 7)) push(k, e);
+    } else if (range === "year") {
+      if (d.slice(0, 4) === today.slice(0, 4)) push(k, e);
+    } else {
+      push(k, e);
+    }
+  }
+  return map;
+}
+function weekKey(iso) {
+  const d = parseDate(iso);
+  const back = d.getDay() === 0 ? 6 : d.getDay() - 1;
+  d.setDate(d.getDate() - back);
+  return toISO(d);
+}
+
+function niceTicks(max) {
+  if (max <= 0) return [0, 0, 0, 0];
+  const rough = max / 3;
+  const pow = Math.pow(10, Math.floor(Math.log10(Math.max(rough, 1))));
+  const n = rough / pow;
+  let step;
+  if (n < 1.5) step = 1;
+  else if (n < 3) step = 2;
+  else if (n < 7) step = 5;
+  else step = 10;
+  step *= pow;
+  const top = Math.ceil(max / step) * step;
+  return [0, top / 3, (top * 2) / 3, top];
+}
+function formatTick(t) {
+  if (t >= 1000) return (t / 1000).toFixed(t % 1000 ? 1 : 0) + "k";
+  return String(Math.round(t * 10) / 10);
+}
+
+function renderBarChart(boxId, sumId, sorted, tipFn, labelFn, summary) {
+  const box = document.getElementById(boxId);
+  const sum = document.getElementById(sumId);
+  if (sorted.length === 0) {
+    box.innerHTML = '<p class="no-data">No data in this range.</p>';
+    sum.textContent = "";
+    return;
+  }
+  const max = Math.max(...sorted.map(s => s[1]), 0);
+  const ticks = niceTicks(max);
+  const wrap = document.createElement("div");
+  wrap.className = "chart-wrap";
+  const yAxis = document.createElement("div");
+  yAxis.className = "y-axis";
+  yAxis.innerHTML = ticks.slice().reverse().map(t => `<span>${formatTick(t)}</span>`).join("");
+  const bars = document.createElement("div");
+  bars.className = "bars";
+  for (const [k, v] of sorted) {
+    const pct = max > 0 ? (v / max) * 100 : 0;
+    const w = document.createElement("div");
+    w.className = "bar-wrap";
+    w.innerHTML = `<div class="bar" style="height:${Math.max(pct, v > 0 ? 2 : 0)}%"><span class="bar-tip">${tipFn(v)}</span></div>
+      <div class="bar-label" title="${esc(labelFn(k))}">${esc(labelFn(k))}</div>`;
+    bars.appendChild(w);
+  }
+  wrap.appendChild(yAxis);
+  wrap.appendChild(bars);
+  box.innerHTML = "";
+  box.appendChild(wrap);
+  sum.textContent = summary;
+}
+
+function renderCharts() {
+  renderMileageOverTime();
+  renderShoeChart();
+  renderCategoryChart("type", e => DB.runs[e.runId] ? DB.runs[e.runId].workoutType || "—" : "—");
+  renderCategoryChart("surf", e => DB.runs[e.runId] ? DB.runs[e.runId].surface || "—" : "—");
+  renderCategoryChart("effort", e => e.effort != null ? String(e.effort) : "—");
+}
+
+function renderMileageOverTime() {
+  const source = DB.entries;
+  const map = bucketByTime(mileRange, source, mileGran);
+  const pairs = [];
+  for (const k in map) {
+    const tot = map[k].reduce((s, e) => s + (e.distanceM || 0), 0);
+    pairs.push([k, mToNum(tot)]);
+  }
+  pairs.sort((a, b) => a[0].localeCompare(b[0]));
+  const unitL = distLabel();
+  const labelFn = mileGran === "week" ? (k => "w/o " + k.slice(5)) : (k => MONTH_NAMES[parseInt(k.slice(5, 7), 10) - 1]);
+  renderBarChart("mile-chart", "mile-summary", pairs,
+    v => v.toFixed(2) + " " + unitL, labelFn,
+    `${RANGE_LABEL[mileRange]} · ${GRAN_LABEL[mileGran]}: ${pairs.reduce((s, p) => s + p[1], 0).toFixed(2)} ${unitL}`);
+  syncRangeTabs("mile-range", mileRange);
+  syncRangeTabs("mile-gran", mileGran);
+}
+
+function renderShoeChart() {
+  const source = bucketByTime(shoeRange, DB.entries, "month");
+  const counts = {};
+  for (const k in source) {
+    for (const e of source[k]) {
+      const r = DB.runs[e.runId];
+      const shoeName = (r && shoeById(r.shoesId)) ? shoeById(r.shoesId).name : "(no shoes)";
+      counts[shoeName] = (counts[shoeName] || 0) + (e.distanceM || 0);
+    }
+  }
+  const pairs = Object.entries(counts).map(([k, v]) => [k, mToNum(v)]).sort((a, b) => b[1] - a[1]);
+  const unitL = distLabel();
+  renderBarChart("shoe-chart", "shoe-chart-summary", pairs,
+    v => v.toFixed(2) + " " + unitL, k => k,
+    `${RANGE_LABEL[shoeRange]}: ${Object.keys(counts).length} pair${Object.keys(counts).length===1?"":"s"}`);
+  syncRangeTabs("shoe-chart-range", shoeRange);
+}
+
+function renderCategoryChart(which, valFn) {
+  const ids = {
+    type: ["type-range", "type-summary", "type-chart", typeRange],
+    surf: ["surf-range", "surf-summary", "surf-chart", surfRange],
+    effort: ["effort-range", "effort-summary", "effort-chart", effortRange]
+  };
+  const [rangeId, sumId, boxId, range] = ids[which];
+  const source = bucketByTime(range, DB.entries, "month");
+  const counts = {};
+  let n = 0;
+  for (const k in source) {
+    for (const e of source[k]) { const v = valFn(e); counts[v] = (counts[v] || 0) + 1; n++; }
+  }
+  const pairs = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const label = which === "effort" ? "effort" : which;
+  renderBarChart(boxId, sumId, pairs,
+    v => v + " run" + (v === 1 ? "" : "s"), k => k,
+    `${RANGE_LABEL[range]}: ${n} run${n===1?"":"s"} across ${pairs.length} ${label} value${pairs.length===1?"":"s"}`);
+  syncRangeTabs(rangeId, range);
+}
+
+function syncRangeTabs(boxId, current) {
+  document.getElementById(boxId).querySelectorAll(".range-btn").forEach(b =>
+    b.classList.toggle("active", b.dataset.range === current));
+}
+
+const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function setupRangeTabs(boxId, setter) {
+  const box = document.getElementById(boxId);
+  const isGran = boxId === "mile-gran";
+  const list = isGran ? GRANS : RANGES;
+  const labels = isGran ? GRAN_LABEL : RANGE_LABEL;
+  box.innerHTML = list.map(r =>
+    `<button class="range-btn${(isGran ? mileGran : getDefaultRange(boxId)) === r ? " active" : ""}" data-range="${r}">${labels[r]}</button>`
+  ).join("");
+  box.querySelectorAll(".range-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      setter(btn.dataset.range);
+      renderCharts();
+    });
+  });
+}
+function getDefaultRange(boxId) {
+  if (boxId === "mile-range") return mileRange;
+  if (boxId === "shoe-chart-range") return shoeRange;
+  if (boxId === "type-range") return typeRange;
+  if (boxId === "surf-range") return surfRange;
+  if (boxId === "effort-range") return effortRange;
+  return "month";
+}
+
+function setupAllTabs() {
+  setupRangeTabs("mile-range", r => { mileRange = r; });
+  setupRangeTabs("mile-gran", r => { mileGran = r; });
+  setupRangeTabs("shoe-chart-range", r => { shoeRange = r; });
+  setupRangeTabs("type-range", r => { typeRange = r; });
+  setupRangeTabs("surf-range", r => { surfRange = r; });
+  setupRangeTabs("effort-range", r => { effortRange = r; });
+}
+
+/* ================= History ================= */
+function renderHistory() {
+  const box = document.getElementById("history-list");
+  const sum = document.getElementById("hist-summary");
+  box.innerHTML = "";
+
+  let entries = DB.entries.slice().sort((a, b) => (b.datetime || "").localeCompare(a.datetime || ""));
+  if (histFrom) entries = entries.filter(e => (e.datetime || "").slice(0, 10) >= histFrom);
+  if (histTo) entries = entries.filter(e => (e.datetime || "").slice(0, 10) <= histTo);
+
+  if (entries.length === 0) {
+    box.innerHTML = '<p class="no-data">No runs in this range.</p>';
+    sum.textContent = "";
+    return;
+  }
+
+  const totM = entries.reduce((s, e) => s + (e.distanceM || 0), 0);
+  const totS = entries.reduce((s, e) => s + (e.durationS || 0), 0);
+  const runs = entries.length;
+  sum.textContent = `${runs} run${runs===1?"":"s"} · ${fmtDist(totM, 1)} ${distLabel()} · ${fmtHours(totS)}`;
+
+  const table = `<table>
+    <thead><tr><th>Date</th><th>Name</th><th class="num">Dist</th><th class="num">Time</th><th class="num">Pace</th><th class="num">Elev</th><th>Surface</th><th>Shoes</th><th>Type</th><th class="num">Effort</th><th>Notes</th><th></th></tr></thead>
+    <tbody>${entries.map(runsRow).join("")}</tbody>
+  </table>`;
+  box.innerHTML = table;
+}
+
+function mondayOf(iso) {
+  const d = parseDate(iso);
+  const back = d.getDay() === 0 ? 6 : d.getDay() - 1;
+  d.setDate(d.getDate() - back);
+  return toISO(d);
+}
+function firstOfMonthISO(d) {
+  const dt = d || new Date();
+  return dt.getFullYear() + "-" + String(dt.getMonth() + 1).padStart(2, "0") + "-01";
+}
+function dataDateBounds() {
+  let min = null, max = null;
+  for (const e of DB.entries) {
+    const d = (e.datetime || "").slice(0, 10);
+    if (!d) continue;
+    if (!min || d < min) min = d;
+    if (!max || d > max) max = d;
+  }
+  return { min: min || todayISO(), max: max || todayISO() };
+}
+function applyHistoryPreset(preset) {
+  const today = todayISO();
+  let from, to;
+  if (preset === "week") {
+    from = mondayOf(today); to = today;
+  } else if (preset === "month") {
+    from = firstOfMonthISO(); to = today;
+  } else if (preset === "lastmonth") {
+    const d = new Date();
+    from = toISO(new Date(d.getFullYear(), d.getMonth() - 1, 1));
+    to = toISO(new Date(d.getFullYear(), d.getMonth(), 0));
+  } else if (preset === "year") {
+    from = today.slice(0, 4) + "-01-01"; to = today;
+  } else {
+    const b = dataDateBounds(); from = b.min; to = b.max;
+  }
+  histFrom = from; histTo = to;
+  document.getElementById("hist-from").value = from;
+  document.getElementById("hist-to").value = to;
+  renderHistory();
+}
+document.getElementById("hist-apply").addEventListener("click", () => {
+  histFrom = document.getElementById("hist-from").value || null;
+  histTo = document.getElementById("hist-to").value || null;
+  renderHistory();
+});
+document.querySelectorAll(".hist-preset").forEach(btn =>
+  btn.addEventListener("click", () => applyHistoryPreset(btn.dataset.preset)));
+
+/* ================= Runs registry ================= */
+const expandedRuns = new Set();
+const expandedShoes = new Set();
+
+function renderRunsList() {
+  const ids = Object.keys(DB.runs).sort((a, b) => DB.runs[a].name.localeCompare(DB.runs[b].name));
+  const box = document.getElementById("runs-table");
+  if (ids.length === 0) {
+    box.innerHTML = '<p class="no-data">No runs yet. Add them from the Home tab.</p>';
+    return;
+  }
+  const byRun = {};
+  for (const e of DB.entries) (byRun[e.runId] = byRun[e.runId] || []).push(e);
+  const html = `<table>
+    <thead><tr><th>Run</th><th>Distance</th><th class="num">Pace</th><th>Location</th><th>Surface</th><th>Shoes</th><th>Type</th><th class="num">Done</th><th></th></tr></thead>
+    <tbody>
+      ${ids.map(id => {
+        const r = DB.runs[id];
+        const entries = (byRun[id] || []).slice().sort((a, b) => (b.datetime || "").localeCompare(a.datetime || ""));
+        const open = expandedRuns.has(id);
+        const pace = entries.length ? formulaPaceFor(entries) : null;
+        return `<tr class="reg-row${open ? " open" : ""}">
+          <td><span class="reg-toggle" onclick="toggleRun('${id}')"><span class="chev">${open ? "▾" : "▸"}</span> ${esc(r.name)}</span></td>
+          <td>${r.distanceM ? fmtDist(r.distanceM, 1) + " " + distLabel() : "—"}</td>
+          <td class="num">${pace ? fmtPace(pace) : "—"}</td>
+          <td>${esc(r.location || "")}</td>
+          <td>${esc(r.surface || "")}</td>
+          <td>${shoeById(r.shoesId) ? esc(shoeById(r.shoesId).name) : ""}</td>
+          <td>${esc(r.workoutType || "")}</td>
+          <td class="num">${entries.length}</td>
+          <td><div class="row-actions">
+            <button class="btn small" onclick="editRun('${id}')">Edit</button>
+            <button class="btn small danger" onclick="delRun('${id}')">Delete</button>
+          </div></td>
+        </tr>
+        ${open ? `<tr class="reg-detail"><td colspan="9">
+          ${entries.length === 0
+            ? '<div class="mutednote">No runs logged for this run yet.</div>'
+            : `<div class="reg-notes">${entries.map(e => {
+                const pace = entryPace(e);
+                const p = `${fmtDate(e.datetime)}<span class="reg-note-meta">${e.elevGainM ? " +" + Math.round(eleMToNum(e.elevGainM)) + " " + elevLabel() : ""}${pace ? " · " + fmtPace(pace) + " /" + distLabel() : ""} · effort ${esc(String(e.effort ?? "—"))}</span>`;
+                return `<div class="reg-note"><span class="reg-note-date">${p}</span>${e.notes ? `<span class="reg-note-text">“${esc(e.notes)}”</span>` : ""}</div>`;
+              }).join("")}</div>`}
+        </td></tr>` : ""}`;
+      }).join("")}
+    </tbody>
+  </table>`;
+  box.innerHTML = html;
+}
+
+function formulaPaceFor(entries) {
+  let tm = 0, ts = 0;
+  for (const e of entries) { tm += e.distanceM || 0; ts += e.durationS || 0; }
+  return tm > 0 ? ts / tm : null;
+}
+
+window.toggleRun = function(id) {
+  if (expandedRuns.has(id)) expandedRuns.delete(id);
+  else expandedRuns.add(id);
+  renderRunsList();
+};
+window.editRun = function(id) {
+  const r = DB.runs[id];
+  if (!r) return;
+  const name = prompt("Run name:", r.name);
+  if (name === null) return;
+  const loc = prompt("Location:", r.location || "");
+  if (loc === null) return;
+  const surface = prompt("Surface:", r.surface || "");
+  if (surface === null) return;
+  const type = prompt("Workout type:", r.workoutType || "");
+  if (type === null) return;
+  r.name = name;
+  r.location = loc;
+  r.surface = surface;
+  r.workoutType = type;
+  renderAll();
+};
+window.delRun = function(id) {
+  const used = DB.entries.some(e => e.runId === id);
+  const msg = used ? "Delete this run AND its logged entries?" : "Delete this run?";
+  if (!confirm(msg)) return;
+  DB.entries = DB.entries.filter(e => e.runId !== id);
+  delete DB.runs[id];
+  renderAll();
+};
+
+/* ================= Shoes ================= */
+function shoeTotalM(id) {
+  let tot = 0;
+  for (const e of DB.entries) {
+    const r = DB.runs[e.runId];
+    if (r && r.shoesId === id) tot += e.distanceM || 0;
+  }
+  return tot;
+}
+
+function renderShoesList() {
+  const box = document.getElementById("shoes-table");
+  const ids = Object.keys(DB.shoes).sort((a, b) => DB.shoes[a].name.localeCompare(DB.shoes[b].name));
+  if (ids.length === 0) {
+    box.innerHTML = '<p class="no-data">No shoes yet. Add them above.</p>';
+    return;
+  }
+  const html = `<table>
+    <thead><tr><th>Shoes</th><th>Brand</th><th class="num">Mileage</th><th class="num">Runs</th><th></th></tr></thead>
+    <tbody>
+      ${ids.map(id => {
+        const s = DB.shoes[id];
+        const totM = shoeTotalM(id);
+        const runs = DB.entries.filter(e => { const r = DB.runs[e.runId]; return r && r.shoesId === id; });
+        const open = expandedShoes.has(id);
+        return `<tr class="reg-row${open ? " open" : ""}">
+          <td><span class="reg-toggle" onclick="toggleShoe('${id}')"><span class="chev">${open ? "▾" : "▸"}</span> ${esc(s.name)}</span></td>
+          <td>${esc(s.brand || "")}</td>
+          <td class="num">${fmtDist(totM, 1)} ${distLabel()}</td>
+          <td class="num">${runs.length}</td>
+          <td><div class="row-actions">
+            <button class="btn small" onclick="editShoe('${id}')">Edit</button>
+            <button class="btn small danger" onclick="delShoe('${id}')">Delete</button>
+          </div></td>
+        </tr>
+        ${open ? `<tr class="reg-detail"><td colspan="5">
+          ${runs.length === 0
+            ? `<div class="mutednote">No runs logged in these shoes yet.</div>`
+            : `<div class="reg-notes">${runs.slice().sort((a, b) => (b.datetime || "").localeCompare(a.datetime || "")).map(e => {
+                const r = DB.runs[e.runId];
+                const pace = entryPace(e);
+                return `<div class="reg-note">
+                  <span class="reg-note-date">${fmtDate(e.datetime)}</span>
+                  <span class="reg-note-meta">${fmtDist(e.distanceM || 0, 1)} ${distLabel()}${pace ? " · " + fmtPace(pace) + " /" + distLabel() : ""} · ${esc(r ? r.name : "—")}</span>
+                </div>`;
+              }).join("")}</div>`}
+        </td></tr>` : ""}`;
+      }).join("")}
+    </tbody>
+  </table>`;
+  box.innerHTML = html;
+}
+
+window.toggleShoe = function(id) {
+  if (expandedShoes.has(id)) expandedShoes.delete(id);
+  else expandedShoes.add(id);
+  renderShoesList();
+};
+window.editShoe = function(id) {
+  const s = DB.shoes[id];
+  if (!s) return;
+  const name = prompt("Shoe name:", s.name);
+  if (name === null) return;
+  const brand = prompt("Brand:", s.brand || "");
+  if (brand === null) return;
+  s.name = name;
+  s.brand = brand;
+  renderAll();
+};
+window.delShoe = function(id) {
+  const used = DB.entries.some(e => { const r = DB.runs[e.runId]; return r && r.shoesId === id; });
+  if (!confirm(used ? "Shoes are attached to runs. Delete anyway? (runs keep miles but lose the shoe link)" : "Delete these shoes?")) return;
+  for (const rid in DB.runs) { if (DB.runs[rid].shoesId === id) DB.runs[rid].shoesId = ""; }
+  delete DB.shoes[id];
+  renderAll();
+};
+document.getElementById("shoe-add-btn").addEventListener("click", () => {
+  const name = document.getElementById("shoe-name").value.trim();
+  if (!name) return;
+  const id = nextId("s", DB.shoes);
+  DB.shoes[id] = { name, brand: document.getElementById("shoe-brand").value.trim() };
+  document.getElementById("shoe-name").value = "";
+  document.getElementById("shoe-brand").value = "";
+  renderAll();
+});
+
+/* ================= Load / Save ================= */
+function loadAndStart(data, name) {
+  try {
+    DB = normalize(data);
+  } catch (err) {
+    document.getElementById("load-err").textContent = "Could not read that file: " + err.message;
+    return;
+  }
+  filename = name || "run-data.json";
+  document.getElementById("file-name").textContent = "(" + filename + ")";
+  document.getElementById("load-screen").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  histFrom = null;
+  histTo = null;
+  setupAllTabs();
+  renderAll();
+}
+
+function normalize(raw) {
+  if (typeof raw !== "object" || raw === null) throw new Error("not a JSON object");
+  const db = emptyDB();
+  if (!raw.runs || typeof raw.runs !== "object") throw new Error("missing 'runs' object");
+  if (!raw.shoes || typeof raw.shoes !== "object") db.shoes = {};
+  db.shoes = raw.shoes || {};
+  for (const id in raw.runs) {
+    const r = raw.runs[id];
+    db.runs[id] = {
+      name: String(r.name ?? "unnamed"),
+      distanceM: Number(r.distanceM || 0),
+      durationS: Number(r.durationS || 0),
+      location: String(r.location ?? ""),
+      surface: String(r.surface ?? ""),
+      shoesId: String(r.shoesId ?? ""),
+      elevGainM: Number(r.elevGainM || 0),
+      elevLossM: Number(r.elevLossM || 0),
+      workoutType: String(r.workoutType ?? "")
+    };
+  }
+  db.entries = Array.isArray(raw.entries) ? raw.entries.map(e => ({
+    id: Number(e.id),
+    datetime: String(e.datetime || ""),
+    runId: String(e.runId || ""),
+    distanceM: Number(e.distanceM || 0),
+    durationS: Number(e.durationS || 0),
+    elevGainM: Number(e.elevGainM || 0),
+    elevLossM: Number(e.elevLossM || 0),
+    effort: e.effort == null ? null : Number(e.effort),
+    notes: String(e.notes ?? "")
+  })) : [];
+  return db;
+}
+
+const fileInput = document.getElementById("file-input");
+const dropZone = document.getElementById("drop-zone");
+fileInput.addEventListener("change", e => {
+  const f = e.target.files[0];
+  if (f) readFile(f);
+});
+dropZone.addEventListener("dragover", ev => { ev.preventDefault(); dropZone.classList.add("drag"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag"));
+dropZone.addEventListener("drop", ev => {
+  ev.preventDefault();
+  dropZone.classList.remove("drag");
+  const f = ev.dataTransfer.files[0];
+  if (f) readFile(f);
+});
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      loadAndStart(JSON.parse(reader.result), file.name);
+    } catch (err) {
+      document.getElementById("load-err").textContent = "Invalid JSON: " + err.message;
+    }
+  };
+  reader.onerror = () => document.getElementById("load-err").textContent = "Could not read file.";
+  reader.readAsText(file);
+}
+
+document.getElementById("sample-link").addEventListener("click", () => loadAndStart(buildSample(), "run-data.json"));
+document.getElementById("fresh-link").addEventListener("click", () => loadAndStart(emptyDB(), "run-data.json"));
+document.getElementById("save-btn").addEventListener("click", download);
+document.getElementById("new-file-btn").addEventListener("click", () => {
+  if (!confirm("Start a new empty file? Unsaved changes are lost.")) return;
+  DB = emptyDB();
+  filename = "run-data.json";
+  document.getElementById("file-name").textContent = "(new file)";
+  histFrom = null;
+  histTo = null;
+  renderAll();
+});
+
+function renderUnitToggle() {
+  document.getElementById("unit-label").textContent = unit === "metric" ? "km" : "mi";
+}
+
+/* ================= Tabs ================= */
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    document.querySelectorAll(".view").forEach(v => v.classList.add("hidden"));
+    document.getElementById("view-" + tab.dataset.view).classList.remove("hidden");
+  });
+});
+
+/* ================= Sample data ================= */
+function buildSample() {
+  const db = emptyDB();
+  db.shoes = {
+    s1: { name: "Pegasus 39", brand: "Nike" },
+    s2: { name: "Saucony Endorphin", brand: "Saucony" },
+    s3: { name: "Trail Stinson", brand: "Salomon" }
+  };
+  db.runs = {
+    r1: { name: "Lake Loop", distanceM: 5000, durationS: 1530, location: "City Park", surface: "trail", shoesId: "s1", elevGainM: 35, elevLossM: 35, workoutType: "easy run" },
+    r2: { name: "Track intervals", distanceM: 6400, durationS: 2100, location: "High School Track", surface: "track", shoesId: "s2", elevGainM: 0, elevLossM: 0, workoutType: "intervals" },
+    r3: { name: "Tempo Thursday", distanceM: 8000, durationS: 2400, location: "Riverfront", surface: "pavement", shoesId: "s1", elevGainM: 15, elevLossM: 15, workoutType: "tempo" },
+    r4: { name: "Mountain 10k", distanceM: 10000, durationS: 3600, location: "Blue Ridge", surface: "trail", shoesId: "s3", elevGainM: 320, elevLossM: 320, workoutType: "long run" },
+    r5: { name: "Easy lunch run", distanceM: 4000, durationS: 1500, location: "Riverfront", surface: "pavement", shoesId: "s2", elevGainM: 5, elevLossM: 5, workoutType: "recovery" }
+  };
+  let id = 0;
+  const runIds = Object.keys(db.runs);
+  let seed = 11;
+  function rnd() {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  }
+  const pick = arr => arr[Math.floor(rnd() * arr.length)];
+  for (let ago = 180; ago >= 1; ago--) {
+    const d = new Date();
+    d.setDate(d.getDate() - ago);
+    const dow = d.getDay();
+    if (dow === 2 || dow === 4 || dow === 6) {
+      const runId = pick(runIds);
+      const run = db.runs[runId];
+      const dt = toISO(d) + "T" + String(6 + Math.floor(rnd() * 3)).padStart(2, "0") + ":" + String(Math.floor(rnd() * 60)).padStart(2, "0");
+      const mult = 0.9 + rnd() * 0.2;
+      db.entries.push({
+        id: ++id, datetime: dt, runId: runId,
+        distanceM: Math.round(run.distanceM * mult),
+        durationS: Math.round(run.durationS * (0.95 + rnd() * 0.25)),
+        elevGainM: run.elevGainM, effort: 4 + Math.floor(rnd() * 5),
+        notes: rnd() < 0.4 ? pick(["felt strong", "easy", "a bit tired", "good form"]) : ""
+      });
+    }
+  }
+  return db;
+}
+</script>
+</body>
+</html>
