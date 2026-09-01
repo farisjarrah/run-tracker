@@ -210,7 +210,11 @@
   .bars { flex: 1; display: flex; gap: 1px; align-items: stretch; height: 180px; border-left: 1px solid var(--grid); padding-left: 1px; }
   .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; min-width: 0; position: relative; }
   .bar { width: 100%; max-width: 48px; background: var(--accent); border-radius: 4px 4px 0 0; position: relative; }
-  .bar-wrap:hover .bar { background: var(--accent-dark); }
+  .bar-wrap:hover .bar:not(.stack) { background: var(--accent-dark); }
+  .bar.stack { display: flex; flex-direction: column; justify-content: flex-end; background: transparent; gap: 1px; }
+  .stack-seg { width: 100%; position: relative; border-radius: 2px 2px 0 0; }
+  .bar.stack .stack-seg:first-child { border-radius: 0; }
+  .stack-seg:hover .bar-tip { opacity: 1; }
   .bar-label { font-size: 11px; color: var(--muted); margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; position: absolute; top: 100%; left: 50%; transform: translateX(-50%); }
   .bar-tip {
     position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
@@ -284,8 +288,12 @@
           <input id="add-distance" type="number" min="0" step="any" placeholder="5" style="width:80px" title="in your selected unit">
         </div>
         <div class="field">
-          <label for="add-dur">Duration (min)</label>
-          <input id="add-dur" type="number" min="0" step="any" placeholder="25" style="width:80px">
+          <label>Duration</label>
+          <div style="display:flex;gap:4px;">
+            <input id="add-dur-h" type="number" min="0" step="1" placeholder="0h" style="width:60px" title="hours">
+            <input id="add-dur-m" type="number" min="0" max="59" step="1" placeholder="25m" style="width:60px" title="minutes">
+            <input id="add-dur-s" type="number" min="0" max="59" step="1" placeholder="0s" style="width:60px" title="seconds">
+          </div>
         </div>
         <div class="field">
           <label for="add-elev">Elev gain</label>
@@ -359,25 +367,35 @@
     </div>
     <div class="card">
       <h2>Mileage per pair of shoes</h2>
+      <div class="chart-tools">
       <div class="range-tabs" id="shoe-chart-range"></div>
       <div class="chart-summary" id="shoe-chart-summary"></div>
       <div id="shoe-chart"></div>
     </div>
     <div class="card">
       <h2>Workouts by type</h2>
-      <div class="range-tabs" id="type-range"></div>
+      <div class="chart-tools">
+        <div class="range-tabs" id="type-range"></div>
+        <div class="range-tabs" id="type-gran"></div>
+      </div>
       <div class="chart-summary" id="type-summary"></div>
       <div id="type-chart"></div>
     </div>
     <div class="card">
       <h2>Runs by surface</h2>
-      <div class="range-tabs" id="surf-range"></div>
+      <div class="chart-tools">
+        <div class="range-tabs" id="surf-range"></div>
+        <div class="range-tabs" id="surf-gran"></div>
+      </div>
       <div class="chart-summary" id="surf-summary"></div>
       <div id="surf-chart"></div>
     </div>
     <div class="card">
       <h2>Workouts by effort</h2>
-      <div class="range-tabs" id="effort-range"></div>
+      <div class="chart-tools">
+        <div class="range-tabs" id="effort-range"></div>
+        <div class="range-tabs" id="effort-gran"></div>
+      </div>
       <div class="chart-summary" id="effort-summary"></div>
       <div id="effort-chart"></div>
     </div>
@@ -461,18 +479,21 @@
 let DB = { shoes: {}, runs: {}, entries: [] };
 let filename = "run-data.json";
 let unit = "metric";
-let mileRange = "month";
+let mileRange = "30d";
 let mileGran = "week";
-let shoeRange = "month";
-let typeRange = "month";
-let surfRange = "month";
-let effortRange = "month";
+let shoeRange = "30d";
+let typeRange = "30d";
+let typeGran = "day";
+let surfRange = "30d";
+let surfGran = "day";
+let effortRange = "30d";
+let effortGran = "day";
 let histFrom = null;
 let histTo = null;
-const RANGES = ["month", "year", "all"];
-const RANGE_LABEL = { month: "This month", year: "This year", all: "All time" };
-const GRANS = ["week", "month"];
-const GRAN_LABEL = { week: "By week", month: "By month" };
+const RANGES = ["week", "7d", "30d", "year", "all"];
+const RANGE_LABEL = { week: "This week", "7d": "Last 7 days", "30d": "Last 30 days", year: "This year", all: "All time" };
+const GRANS = ["day", "week", "month"];
+const GRAN_LABEL = { day: "By day", week: "By week", month: "By month" };
 const M_PER_KM = 1000;
 const M_PER_MI = 1609.344;
 const SURFACE_SUGGESTIONS = ["trail", "track", "pavement", "dirt", "grass", "treadmill"];
@@ -675,7 +696,10 @@ document.getElementById("pick-run").addEventListener("change", e => {
   if (!r) return;
   document.getElementById("add-name").value = r.name;
   document.getElementById("add-distance").value = r.distanceM ? mToNum(r.distanceM).toFixed(2) : "";
-  document.getElementById("add-dur").value = r.durationS ? (r.durationS / 60).toFixed(1) : "";
+  const dS = r.durationS || 0;
+  document.getElementById("add-dur-h").value = dS ? Math.floor(dS / 3600) : "";
+  document.getElementById("add-dur-m").value = dS ? Math.floor((dS % 3600) / 60) : "";
+  document.getElementById("add-dur-s").value = dS ? Math.round(dS % 60) : "";
   document.getElementById("add-elev").value = r.elevGainM != null ? eleMToNum(r.elevGainM).toFixed(0) : "";
   document.getElementById("add-location").value = r.location || "";
   document.getElementById("add-surface").value = r.surface || "";
@@ -759,8 +783,10 @@ document.getElementById("add-form").addEventListener("submit", e => {
   if (!name) return;
   const distNum = parseFloat(document.getElementById("add-distance").value);
   const distanceM = distNum > 0 ? numToM(distNum) : 0;
-  const durMin = parseFloat(document.getElementById("add-dur").value);
-  const durationS = durMin > 0 ? durMin * 60 : 0;
+  const dh = parseInt(document.getElementById("add-dur-h").value || "0", 10);
+  const dm = parseInt(document.getElementById("add-dur-m").value || "0", 10);
+  const ds = parseInt(document.getElementById("add-dur-s").value || "0", 10);
+  const durationS = (isFinite(dh) && dh >= 0 ? dh * 3600 : 0) + (isFinite(dm) && dm >= 0 ? dm * 60 : 0) + (isFinite(ds) && ds >= 0 ? ds : 0);
   const elevNum = parseFloat(document.getElementById("add-elev").value);
   const elevGainM = elevNum > 0 ? numToEleM(elevNum) : 0;
   const datetime = document.getElementById("add-datetime").value || new Date().toISOString().slice(0, 16);
@@ -803,7 +829,9 @@ document.getElementById("add-form").addEventListener("submit", e => {
 
   document.getElementById("add-name").value = "";
   document.getElementById("add-distance").value = "";
-  document.getElementById("add-dur").value = "";
+  document.getElementById("add-dur-h").value = "";
+  document.getElementById("add-dur-m").value = "";
+  document.getElementById("add-dur-s").value = "";
   document.getElementById("add-elev").value = "";
   document.getElementById("add-datetime").value = "";
   document.getElementById("add-location").value = "";
@@ -822,25 +850,38 @@ function clamp10(v) {
 
 /* ================= Charts ================= */
 function bucketByTime(range, data, key) {
-  const today = todayISO();
+  const bounds = rangeBounds(range);
   const map = {};
   const push = (k, c) => { (map[k] = map[k] || []).push(c); };
   for (const e of data) {
     const d = (e.datetime || "").slice(0, 10);
     if (!d) continue;
+    if (d < bounds.from || d > bounds.to) continue;
     let k;
     if (key === "week") k = weekKey(d);
     else if (key === "month") k = d.slice(0, 7);
     else k = d;
-    if (range === "month") {
-      if (d.slice(0, 7) === today.slice(0, 7)) push(k, e);
-    } else if (range === "year") {
-      if (d.slice(0, 4) === today.slice(0, 4)) push(k, e);
-    } else {
-      push(k, e);
-    }
+    push(k, e);
   }
   return map;
+}
+function rangeBounds(range) {
+  const today = new Date();
+  const tISO = todayISO();
+  if (range === "week") {
+    return { from: mondayOf(tISO), to: tISO };
+  } else if (range === "7d") {
+    const d = new Date(today); d.setDate(d.getDate() - 6);
+    return { from: toISO(d), to: tISO };
+  } else if (range === "30d") {
+    const d = new Date(today); d.setDate(d.getDate() - 29);
+    return { from: toISO(d), to: tISO };
+  } else if (range === "year") {
+    return { from: tISO.slice(0, 4) + "-01-01", to: tISO };
+  } else {
+    const b = dataDateBounds();
+    return { from: b.min, to: b.max };
+  }
 }
 function weekKey(iso) {
   const d = parseDate(iso);
@@ -868,7 +909,7 @@ function formatTick(t) {
   return String(Math.round(t * 10) / 10);
 }
 
-function renderBarChart(boxId, sumId, sorted, tipFn, labelFn, summary) {
+function renderBarChart(boxId, sumId, sorted, tipFn, labelFn, summary, colorFn) {
   const box = document.getElementById(boxId);
   const sum = document.getElementById(sumId);
   if (sorted.length === 0) {
@@ -885,14 +926,15 @@ function renderBarChart(boxId, sumId, sorted, tipFn, labelFn, summary) {
   yAxis.innerHTML = ticks.slice().reverse().map(t => `<span>${formatTick(t)}</span>`).join("");
   const bars = document.createElement("div");
   bars.className = "bars";
-  for (const [k, v] of sorted) {
+  sorted.forEach(([k, v], i) => {
     const pct = max > 0 ? (v / max) * 100 : 0;
     const w = document.createElement("div");
     w.className = "bar-wrap";
-    w.innerHTML = `<div class="bar" style="height:${Math.max(pct, v > 0 ? 2 : 0)}%"><span class="bar-tip">${tipFn(v)}</span></div>
+    const color = colorFn ? colorFn(k, i) : "var(--accent)";
+    w.innerHTML = `<div class="bar" style="height:${Math.max(pct, v > 0 ? 2 : 0)}%;background:${color}"><span class="bar-tip">${tipFn(v)}</span></div>
       <div class="bar-label" title="${esc(labelFn(k))}">${esc(labelFn(k))}</div>`;
     bars.appendChild(w);
-  }
+  });
   wrap.appendChild(yAxis);
   wrap.appendChild(bars);
   box.innerHTML = "";
@@ -918,16 +960,18 @@ function renderMileageOverTime() {
   }
   pairs.sort((a, b) => a[0].localeCompare(b[0]));
   const unitL = distLabel();
-  const labelFn = mileGran === "week" ? (k => "w/o " + k.slice(5)) : (k => MONTH_NAMES[parseInt(k.slice(5, 7), 10) - 1]);
+  const labelFn = mileGran === "week" ? (k => "w/o " + k.slice(5)) : (mileGran === "month" ? (k => MONTH_NAMES[parseInt(k.slice(5, 7), 10) - 1]) : (k => k.slice(5)));
+  resetPalette();
   renderBarChart("mile-chart", "mile-summary", pairs,
     v => v.toFixed(2) + " " + unitL, labelFn,
-    `${RANGE_LABEL[mileRange]} · ${GRAN_LABEL[mileGran]}: ${pairs.reduce((s, p) => s + p[1], 0).toFixed(2)} ${unitL}`);
+    `${RANGE_LABEL[mileRange]} · ${GRAN_LABEL[mileGran]}: ${pairs.reduce((s, p) => s + p[1], 0).toFixed(2)} ${unitL}`,
+    (k, i) => PALETTE[i % PALETTE.length]);
   syncRangeTabs("mile-range", mileRange);
   syncRangeTabs("mile-gran", mileGran);
 }
 
 function renderShoeChart() {
-  const source = bucketByTime(shoeRange, DB.entries, "month");
+  const source = bucketByTime(shoeRange, DB.entries, "day");
   const counts = {};
   for (const k in source) {
     for (const e of source[k]) {
@@ -938,31 +982,89 @@ function renderShoeChart() {
   }
   const pairs = Object.entries(counts).map(([k, v]) => [k, mToNum(v)]).sort((a, b) => b[1] - a[1]);
   const unitL = distLabel();
+  resetPalette();
   renderBarChart("shoe-chart", "shoe-chart-summary", pairs,
     v => v.toFixed(2) + " " + unitL, k => k,
-    `${RANGE_LABEL[shoeRange]}: ${Object.keys(counts).length} pair${Object.keys(counts).length===1?"":"s"}`);
+    `${RANGE_LABEL[shoeRange]}: ${pairs.length} pair${pairs.length===1?"":"s"}`,
+    (k) => palForKey(k));
   syncRangeTabs("shoe-chart-range", shoeRange);
 }
 
 function renderCategoryChart(which, valFn) {
   const ids = {
-    type: ["type-range", "type-summary", "type-chart", typeRange],
-    surf: ["surf-range", "surf-summary", "surf-chart", surfRange],
-    effort: ["effort-range", "effort-summary", "effort-chart", effortRange]
+    type: ["type-range", "type-gran", "type-summary", "type-chart", typeRange, typeGran],
+    surf: ["surf-range", "surf-gran", "surf-summary", "surf-chart", surfRange, surfGran],
+    effort: ["effort-range", "effort-gran", "effort-summary", "effort-chart", effortRange, effortGran]
   };
-  const [rangeId, sumId, boxId, range] = ids[which];
-  const source = bucketByTime(range, DB.entries, "month");
-  const counts = {};
+  const [rangeId, granId, sumId, boxId, range, gran] = ids[which];
+  const source = bucketByTime(range, DB.entries, gran);
+  const buckets = {};
+  const catTotals = {};
   let n = 0;
   for (const k in source) {
-    for (const e of source[k]) { const v = valFn(e); counts[v] = (counts[v] || 0) + 1; n++; }
+    for (const e of source[k]) {
+      const v = valFn(e);
+      n++;
+      buckets[k] = buckets[k] || {};
+      buckets[k][v] = (buckets[k][v] || 0) + 1;
+      catTotals[v] = (catTotals[v] || 0) + 1;
+    }
   }
-  const pairs = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const catOrder = Object.keys(catTotals).sort((a, b) => catTotals[b] - catTotals[a]);
   const label = which === "effort" ? "effort" : which;
-  renderBarChart(boxId, sumId, pairs,
-    v => v + " run" + (v === 1 ? "" : "s"), k => k,
-    `${RANGE_LABEL[range]}: ${n} run${n===1?"":"s"} across ${pairs.length} ${label} value${pairs.length===1?"":"s"}`);
+  const mon = MONTH_NAMES;
+  const labelFnMile = gran === "week" ? (k => "w/o " + k.slice(5)) : (gran === "month" ? (k => mon[parseInt(k.slice(5, 7), 10) - 1]) : (k => k.slice(5)));
+  resetPalette();
+  renderStackedChart(boxId, sumId, buckets, catOrder, labelFnMile,
+    (v) => v + " run" + (v === 1 ? "" : "s"),
+    `${RANGE_LABEL[range]} · ${GRAN_LABEL[gran]}: ${n} run${n===1?"":"s"} across ${catOrder.length} ${label} value${catOrder.length===1?"":"s"}`);
   syncRangeTabs(rangeId, range);
+  syncRangeTabs(granId, gran);
+}
+
+function renderStackedChart(boxId, sumId, buckets, catOrder, labelFn, tipFn, summary) {
+  const box = document.getElementById(boxId);
+  const sum = document.getElementById(sumId);
+  const keys = Object.keys(buckets).sort();
+  if (keys.length === 0) {
+    box.innerHTML = '<p class="no-data">No data in this range.</p>';
+    sum.textContent = "";
+    return;
+  }
+  const totals = {};
+  let max = 0;
+  for (const k of keys) {
+    let t = 0;
+    for (const c in buckets[k]) t += buckets[k][c];
+    totals[k] = t;
+    if (t > max) max = t;
+  }
+  const ticks = niceTicks(max);
+  const wrap = document.createElement("div");
+  wrap.className = "chart-wrap";
+  const yAxis = document.createElement("div");
+  yAxis.className = "y-axis";
+  yAxis.innerHTML = ticks.slice().reverse().map(t => `<span>${formatTick(t)}</span>`).join("");
+  const bars = document.createElement("div");
+  bars.className = "bars";
+  for (const k of keys) {
+    const t = totals[k];
+    const pct = max > 0 ? (t / max) * 100 : 0;
+    const w = document.createElement("div");
+    w.className = "bar-wrap";
+    const segs = catOrder
+      .filter(c => (buckets[k][c] || 0) > 0)
+      .map(c => `<div class="stack-seg" style="height:${(buckets[k][c] / max) * 100}%;background:${palForKey(c)}"><span class="bar-tip">${c}: ${tipFn(buckets[k][c])}</span></div>`)
+      .join("");
+    w.innerHTML = `<div class="bar stack" style="height:${Math.max(pct, t > 0 ? 2 : 0)}%">${segs}</div>
+      <div class="bar-label" title="${esc(labelFn(k))}">${esc(labelFn(k))}</div>`;
+    bars.appendChild(w);
+  }
+  wrap.appendChild(yAxis);
+  wrap.appendChild(bars);
+  box.innerHTML = "";
+  box.appendChild(wrap);
+  sum.textContent = summary;
 }
 
 function syncRangeTabs(boxId, current) {
@@ -972,13 +1074,30 @@ function syncRangeTabs(boxId, current) {
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-function setupRangeTabs(boxId, setter) {
+const PALETTE = [
+  "#0f766e", "#7c3aed", "#dc2626", "#d97706", "#0891b2", "#4d7c0f",
+  "#db2777", "#6d28d9", "#b45309", "#2563eb", "#16a34a", "#be123c",
+  "#0e7490", "#a16207", "#9333ea", "#e11d48", "#0d9488", "#65a30d"
+];
+const palMap = {};
+let palIdx = 0;
+function palForKey(key) {
+  if (!(key in palMap)) { palMap[key] = PALETTE[palIdx % PALETTE.length]; palIdx++; }
+  return palMap[key];
+}
+function resetPalette() {
+  for (const k in palMap) delete palMap[k];
+  palIdx = 0;
+}
+
+function setupRangeTabs(boxId, setter, kind) {
   const box = document.getElementById(boxId);
-  const isGran = boxId === "mile-gran";
-  const list = isGran ? GRANS : RANGES;
-  const labels = isGran ? GRAN_LABEL : RANGE_LABEL;
+  if (!box) return;
+  const list = kind === "gran" ? GRANS : RANGES;
+  const labels = kind === "gran" ? GRAN_LABEL : RANGE_LABEL;
+  const def = getDefaultRange(boxId);
   box.innerHTML = list.map(r =>
-    `<button class="range-btn${(isGran ? mileGran : getDefaultRange(boxId)) === r ? " active" : ""}" data-range="${r}">${labels[r]}</button>`
+    `<button class="range-btn${def === r ? " active" : ""}" data-range="${r}">${labels[r]}</button>`
   ).join("");
   box.querySelectorAll(".range-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -989,20 +1108,27 @@ function setupRangeTabs(boxId, setter) {
 }
 function getDefaultRange(boxId) {
   if (boxId === "mile-range") return mileRange;
+  if (boxId === "mile-gran") return mileGran;
   if (boxId === "shoe-chart-range") return shoeRange;
   if (boxId === "type-range") return typeRange;
+  if (boxId === "type-gran") return typeGran;
   if (boxId === "surf-range") return surfRange;
+  if (boxId === "surf-gran") return surfGran;
   if (boxId === "effort-range") return effortRange;
-  return "month";
+  if (boxId === "effort-gran") return effortGran;
+  return "30d";
 }
 
 function setupAllTabs() {
-  setupRangeTabs("mile-range", r => { mileRange = r; });
-  setupRangeTabs("mile-gran", r => { mileGran = r; });
-  setupRangeTabs("shoe-chart-range", r => { shoeRange = r; });
-  setupRangeTabs("type-range", r => { typeRange = r; });
-  setupRangeTabs("surf-range", r => { surfRange = r; });
-  setupRangeTabs("effort-range", r => { effortRange = r; });
+  setupRangeTabs("mile-range", r => { mileRange = r; }, "range");
+  setupRangeTabs("mile-gran", r => { mileGran = r; }, "gran");
+  setupRangeTabs("shoe-chart-range", r => { shoeRange = r; }, "range");
+  setupRangeTabs("type-range", r => { typeRange = r; }, "range");
+  setupRangeTabs("type-gran", r => { typeGran = r; }, "gran");
+  setupRangeTabs("surf-range", r => { surfRange = r; }, "range");
+  setupRangeTabs("surf-gran", r => { surfGran = r; }, "gran");
+  setupRangeTabs("effort-range", r => { effortRange = r; }, "range");
+  setupRangeTabs("effort-gran", r => { effortGran = r; }, "gran");
 }
 
 /* ================= History ================= */
