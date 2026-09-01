@@ -199,6 +199,8 @@
   }
   .range-tabs button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .chart-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+  .range-tabs { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+  .tab-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; margin-right: 2px; }
   .chart-summary { color: var(--muted); font-size: 14px; margin-bottom: 12px; }
 
   .chart-wrap { display: flex; gap: 0; align-items: stretch; }
@@ -368,7 +370,8 @@
     <div class="card">
       <h2>Mileage per pair of shoes</h2>
       <div class="chart-tools">
-      <div class="range-tabs" id="shoe-chart-range"></div>
+        <div class="range-tabs" id="shoe-chart-range"></div>
+      </div>
       <div class="chart-summary" id="shoe-chart-summary"></div>
       <div id="shoe-chart"></div>
     </div>
@@ -1096,7 +1099,8 @@ function setupRangeTabs(boxId, setter, kind) {
   const list = kind === "gran" ? GRANS : RANGES;
   const labels = kind === "gran" ? GRAN_LABEL : RANGE_LABEL;
   const def = getDefaultRange(boxId);
-  box.innerHTML = list.map(r =>
+  const groupLabel = kind === "gran" ? "Split by" : "Range";
+  box.innerHTML = `<span class="tab-label">${groupLabel}</span>` + list.map(r =>
     `<button class="range-btn${def === r ? " active" : ""}" data-range="${r}">${labels[r]}</button>`
   ).join("");
   box.querySelectorAll(".range-btn").forEach(btn => {
