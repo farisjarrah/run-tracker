@@ -67,6 +67,34 @@ Make the default data filename predictable (e.g. `app-data.json`) so the README'
 
 ---
 
+## Session continuity, menu & PWA (know before editing)
+
+- **The app auto-resumes.** After every data mutation/render, `backupDB()` writes a rolling
+  latest-state backup to `localStorage` under a `<slug>-data-backup` key (JSON
+  `{savedAt, filename, data}`). At script start, `autoStart()` reads it and, if the data
+  validates (`bk.data.<key>`), silently calls `loadAndStart()` — so refresh / closed tab just
+  picks up where you left off. The **load screen only appears on first-ever use** (no backup
+  exists yet). Corrupt backups fall through safely to the load-screen error path.
+- **Don't add a "Restore last session" UI.** The backup is a rolling latest-state, so a
+  restore would just reload the same data already in memory — it was deliberately removed.
+- **Menu instead of inline buttons.** The topbar uses a ☰ hamburger (`#menu-btn` + `#menu`
+  with `.menu-item` children; `.open` toggles it open; it closes on outside click or item
+  click). Items: **Save backup file…** (`#save-btn`, downloads the JSON), **Open a data
+  file…** (`#open-item`, clicks the hidden load-screen `#file-input`), **New file**
+  (`#new-file-btn`, confirm + starts empty). Theme toggle stays visible outside the menu.
+  Note: **New file keeps the backup** (it becomes the empty DB) so a later refresh still
+  resumes with no load screen.
+- **`[hidden]` gotcha:** menu items use `display:block`, which overrides the browser's built-in
+  `[hidden]` rule — that's why the CSS keeps a global `[hidden], .hidden { display: none !important; }`.
+  Any element hidden via the attribute depends on it; `backupDB()` also skips writes while
+  `#app` has the `.hidden` class.
+- **PWA files are part of the deployable set:** `manifest.json`, `sw.js` (pre-caches `./`,
+  the manifest, and the icon; network-first navigations, cache-first assets), and `icon.png`
+  (third-party asset — keep the license attribution notes in the README). `index.html` has
+  the matching head metas + service-worker registration.
+
+---
+
 ## README conventions
 
 - **Title + one-line tagline** — e.g. *"Dead simple X tracker, saves data locally/personal
