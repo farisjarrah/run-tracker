@@ -9,10 +9,22 @@ Even on github pages, no data is transmitted anywhere and you are only opening u
 If you save your file to icloud storage you can use the same file for all of your devices, probably works with any other filesystem integration type too (like google drive), but untested.
 
 ### Saving on iPhone/iPad (iOS Safari)
-On iOS, tapping **Save file** opens the share sheet — choose **Save to Files**, browse to the folder that holds `run-data.json` (iCloud Drive, not "Recents"), and when it asks, pick **Replace** so you don't end up with `run-data.json 2`. Always open the file from **Browse → iCloud Drive** after saving it the first time so it's downloaded locally — "Recents" only shows iCloud files that are already on the device.
+Tap **Save file** and choose **Save to Files**. iOS Safari can't overwrite the file you opened, so treat the save as a *backup copy*: if iOS offers it, pick **Replace** to keep a single file; if it saves a new file instead (e.g. `run-data.json 2`), that's fine too — once you have a backup, you can delete the older duplicate.
+
+**You can't lose progress either way.** As you track, the app auto-saves your latest session on the device (in the browser's storage). If you refresh or the page closes, the load screen shows **Restore your last session** and brings everything right back. The file you save to iCloud is your cross-device backup. To make a file show up in the Files picker, open it once in the Files app so iCloud downloads it, then always pick **Browse → iCloud Drive**, not "Recents".
+
+### Install as an app (PWA)
+Works as a normal website, or install it to your home screen for a full app experience:
+- **iPhone/iPad:** Share button → **Add to Home Screen**.
+- **Android:** Chrome menu (⋮) → **Add to Home screen** or **Install app**.
+- **Desktop:** install icon in the Chrome/Edge address bar (or menu → **Install...**).
+The installed app opens full-screen with its own icon; the data flow (open JSON + auto-save + save to iCloud) is unchanged.
 
 ## WARNING:
 This was vibecoded using the free OpenCode Big Pickle AI Model 09/2026.
+
+## Credits
+Icon: "Running shoe" by Delapouite, from game-icons.net (CC BY 3.0).
 
 ## Screenshots
 <img width="741" height="929" alt="image" src="https://github.com/user-attachments/assets/587a0f9b-2590-48dd-982b-86ec2d1c0190" />
