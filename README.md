@@ -11,7 +11,9 @@ If you save your file to icloud storage you can use the same file for all of you
 ### Saving on iPhone/iPad (iOS Safari)
 Tap **Save file** and choose **Save to Files**. iOS Safari can't overwrite the file you opened, so treat the save as a *backup copy*: if iOS offers it, pick **Replace** to keep a single file; if it saves a new file instead (e.g. `run-data.json 2`), that's fine too — once you have a backup, you can delete the older duplicate.
 
-**You can't lose progress either way.** As you track, the app auto-saves your latest session on the device (in the browser's storage). If you refresh or the page closes, the load screen shows **Restore your last session** and brings everything right back. The file you save to iCloud is your cross-device backup. To make a file show up in the Files picker, open it once in the Files app so iCloud downloads it, then always pick **Browse → iCloud Drive**, not "Recents".
+**You can't lose progress either way.** As you track, the app auto-saves your latest session on the device (in the browser's storage). If you refresh, close the tab, or come back later, it just picks up where you left off — the last session loads automatically, no prompts. The file you save to iCloud is your cross-device backup. To make a file show up in the Files picker, open it once in the Files app so iCloud downloads it, then always pick **Browse → iCloud Drive**, not "Recents".
+
+The **☰ menu** (top right) has: **Save backup file…** (download the JSON to iCloud), **Restore last session** (reload the on-device autosave), **Open a data file…** (load a different JSON, e.g. one saved on another device), and **New file**.
 
 ### Install as an app (PWA)
 Works as a normal website, or install it to your home screen for a full app experience:

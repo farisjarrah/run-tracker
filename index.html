@@ -40,7 +40,7 @@
     font-size: 15px;
     transition: background .2s, color .2s;
   }
-  .hidden { display: none !important; }
+  .hidden, [hidden] { display: none !important; }
 
   /* ---------- Load screen ---------- */
   #load-screen {
@@ -95,6 +95,30 @@
     transition: background .2s, color .2s, border-color .2s;
   }
   .theme-toggle:hover { color: var(--text); border-color: var(--accent); }
+  .menu-wrap { position: relative; }
+  .menu-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; width: 38px; height: 34px;
+    border: 1px solid var(--border); border-radius: 20px;
+    background: var(--card); color: var(--text); font-size: 17px; line-height: 1;
+    transition: background .2s, color .2s, border-color .2s;
+  }
+  .menu-btn:hover { border-color: var(--accent); }
+  .menu {
+    display: none; position: absolute; right: 0; top: calc(100% + 6px);
+    min-width: 200px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.18); overflow: hidden; z-index: 50;
+  }
+  .menu.open { display: block; }
+  .menu-item {
+    display: block; width: 100%; text-align: left; cursor: pointer;
+    padding: 10px 14px; border: 0; background: none; color: var(--text);
+    font-size: 14px; border-bottom: 1px solid var(--border);
+  }
+  .menu-item:hover { background: var(--accent-soft); }
+  .menu-item:last-child { border-bottom: 0; }
+  .menu-item.danger { color: var(--danger); }
   .unit-toggle {
     display: inline-flex; align-items: center; gap: 4px; cursor: pointer;
     padding: 6px 12px; border: 1px solid var(--border); border-radius: 20px;
@@ -251,8 +275,7 @@
     </label>
     <div id="load-err"></div>
     <span id="sample-link">No file yet? Download a sample to try it</span><br><br>
-    <button class="btn" id="fresh-link">Or start from scratch (empty file)</button><br><br>
-    <button class="btn" id="restore-link" hidden>Restore your last session</button>
+    <button class="btn" id="fresh-link">Or start from scratch (empty file)</button>
   </div>
 </div>
 
@@ -263,8 +286,15 @@
     <div class="topbar-actions">
       <button class="unit-toggle" id="unit-toggle" title="Switch between km and miles">Units: <span id="unit-label">km</span></button>
       <button class="theme-toggle" id="theme-toggle" title="Toggle dark / light mode"><span id="theme-emoji">🌙</span><span id="theme-label"> Dark</span></button>
-      <button class="btn" id="new-file-btn" title="Start over with a fresh empty file">New</button>
-      <button class="btn primary" id="save-btn">Save file</button>
+      <div class="menu-wrap">
+        <button class="menu-btn" id="menu-btn" title="Menu">☰</button>
+        <div class="menu" id="menu">
+          <button class="menu-item" id="save-btn" title="Download your data as a backup file">Save backup file…</button>
+          <button class="menu-item" id="restore-item" title="Reload the last autosaved session from this device" hidden>Restore last session</button>
+          <button class="menu-item" id="open-item" title="Open a JSON data file (e.g. from iCloud)">Open a data file…</button>
+          <button class="menu-item danger" id="new-file-btn" title="Start over with a fresh empty file">New file</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -1472,27 +1502,45 @@ function normalize(raw) {
   return db;
 }
 
-/* ================= Autosave backup (restore safety net) ================= */
+/* ================= Autosave backup (keeps working across refresh) ================= */
 function backupDB() {
   const app = document.getElementById("app");
   if (!DB || !app || app.classList.contains("hidden")) return;
   try {
     localStorage.setItem("run-data-backup", JSON.stringify({ savedAt: Date.now(), filename, data: DB }));
   } catch (err) { /* storage unavailable - ignore */ }
+  const ri = document.getElementById("restore-item");
+  if (ri) ri.hidden = false;
 }
-(function initRestore() {
-  const btn = document.getElementById("restore-link");
-  if (!btn) return;
-  let bk = null;
-  try { bk = JSON.parse(localStorage.getItem("run-data-backup")); } catch (err) {}
-  if (bk && bk.data) {
-    btn.hidden = false;
-    btn.addEventListener("click", () => {
-      if (!confirm("Restore your last session? This discards the current unsaved state.")) return;
-      loadAndStart(bk.data, bk.filename || "run-data.json");
-    });
+function readBackup() {
+  try { return JSON.parse(localStorage.getItem("run-data-backup")); } catch (err) { return null; }
+}
+(function autoStart() {
+  const bk = readBackup();
+  if (bk && bk.data && bk.data.runs) {
+    try { loadAndStart(bk.data, bk.filename || "run-data.json"); } catch (err) { /* fall through to load screen */ }
   }
 })();
+/* ================= Topbar menu ================= */
+const menuBtn = document.getElementById("menu-btn");
+const menu = document.getElementById("menu");
+if (menuBtn && menu) {
+  menuBtn.addEventListener("click", e => { e.stopPropagation(); menu.classList.toggle("open"); });
+  document.addEventListener("click", () => menu.classList.remove("open"));
+  menu.querySelectorAll(".menu-item").forEach(it => it.addEventListener("click", () => menu.classList.remove("open")));
+}
+const restoreItem = document.getElementById("restore-item");
+if (restoreItem) restoreItem.addEventListener("click", () => {
+  const bk = readBackup();
+  if (!bk || !bk.data) return;
+  if (!confirm("Reload your last saved session? Any unsaved changes in this session are lost.")) return;
+  loadAndStart(bk.data, bk.filename || "run-data.json");
+});
+const openItem = document.getElementById("open-item");
+if (openItem) openItem.addEventListener("click", () => {
+  const fi = document.getElementById("file-input");
+  if (fi) fi.click();
+});
 
 const fileInput = document.getElementById("file-input");
 const dropZone = document.getElementById("drop-zone");
@@ -1535,9 +1583,6 @@ document.getElementById("new-file-btn").addEventListener("click", () => {
   histFrom = null;
   histTo = null;
   renderAll();
-  try { localStorage.removeItem("run-data-backup"); } catch (err) {}
-  const rb = document.getElementById("restore-link");
-  if (rb) rb.hidden = true;
 });
 
 function renderUnitToggle() {
