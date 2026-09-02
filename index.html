@@ -290,7 +290,6 @@
         <button class="menu-btn" id="menu-btn" title="Menu">☰</button>
         <div class="menu" id="menu">
           <button class="menu-item" id="save-btn" title="Download your data as a backup file">Save backup file…</button>
-          <button class="menu-item" id="restore-item" title="Reload the last autosaved session from this device" hidden>Restore last session</button>
           <button class="menu-item" id="open-item" title="Open a JSON data file (e.g. from iCloud)">Open a data file…</button>
           <button class="menu-item danger" id="new-file-btn" title="Start over with a fresh empty file">New file</button>
         </div>
@@ -1509,8 +1508,6 @@ function backupDB() {
   try {
     localStorage.setItem("run-data-backup", JSON.stringify({ savedAt: Date.now(), filename, data: DB }));
   } catch (err) { /* storage unavailable - ignore */ }
-  const ri = document.getElementById("restore-item");
-  if (ri) ri.hidden = false;
 }
 function readBackup() {
   try { return JSON.parse(localStorage.getItem("run-data-backup")); } catch (err) { return null; }
@@ -1529,13 +1526,6 @@ if (menuBtn && menu) {
   document.addEventListener("click", () => menu.classList.remove("open"));
   menu.querySelectorAll(".menu-item").forEach(it => it.addEventListener("click", () => menu.classList.remove("open")));
 }
-const restoreItem = document.getElementById("restore-item");
-if (restoreItem) restoreItem.addEventListener("click", () => {
-  const bk = readBackup();
-  if (!bk || !bk.data) return;
-  if (!confirm("Reload your last saved session? Any unsaved changes in this session are lost.")) return;
-  loadAndStart(bk.data, bk.filename || "run-data.json");
-});
 const openItem = document.getElementById("open-item");
 if (openItem) openItem.addEventListener("click", () => {
   const fi = document.getElementById("file-input");

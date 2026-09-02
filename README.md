@@ -13,7 +13,7 @@ Tap **Save file** and choose **Save to Files**. iOS Safari can't overwrite the f
 
 **You can't lose progress either way.** As you track, the app auto-saves your latest session on the device (in the browser's storage). If you refresh, close the tab, or come back later, it just picks up where you left off — the last session loads automatically, no prompts. The file you save to iCloud is your cross-device backup. To make a file show up in the Files picker, open it once in the Files app so iCloud downloads it, then always pick **Browse → iCloud Drive**, not "Recents".
 
-The **☰ menu** (top right) has: **Save backup file…** (download the JSON to iCloud), **Restore last session** (reload the on-device autosave), **Open a data file…** (load a different JSON, e.g. one saved on another device), and **New file**.
+The **☰ menu** (top right) has: **Save backup file…** (download the JSON to iCloud), **Open a data file…** (load a different JSON, e.g. one saved on another device), and **New file**.
 
 ### Install as an app (PWA)
 Works as a normal website, or install it to your home screen for a full app experience:
