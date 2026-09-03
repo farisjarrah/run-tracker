@@ -251,6 +251,24 @@
   .no-data { color: var(--muted); text-align: center; padding: 30px 0; }
 
   footer.note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 30px; }
+
+  /* ---------- Edit modals ---------- */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; padding: 20px;
+  }
+  .modal-box {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3); padding: 24px;
+    max-width: 540px; width: 100%; max-height: 90vh; overflow-y: auto;
+  }
+  .modal-box h2 { margin: 0 0 16px; font-size: 18px; }
+  .modal-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .modal-field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 110px; }
+  .modal-field label { font-size: 12px; color: var(--muted); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+  .modal-hint { font-size: 12px; color: var(--muted); margin: 4px 0 0; }
 </style>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f766e">
@@ -511,6 +529,115 @@
     </div>
   </div>
 
+  <!-- Edit Entry Modal -->
+  <div id="edit-entry-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h2>Edit run entry</h2>
+      <div class="modal-row">
+        <div class="modal-field" style="flex:2;">
+          <label for="ee-run">Run</label>
+          <select id="ee-run"></select>
+        </div>
+        <div class="modal-field">
+          <label for="ee-datetime">Date &amp; time</label>
+          <input id="ee-datetime" type="datetime-local">
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label for="ee-distance">Distance</label>
+          <input id="ee-distance" type="number" min="0" step="any" title="in your selected unit">
+        </div>
+        <div class="modal-field">
+          <label>Duration</label>
+          <div style="display:flex;gap:4px;">
+            <input id="ee-dur-h" type="number" min="0" step="1" placeholder="0h" style="width:60px" title="hours">
+            <input id="ee-dur-m" type="number" min="0" max="59" step="1" placeholder="25m" style="width:60px" title="minutes">
+            <input id="ee-dur-s" type="number" min="0" max="59" step="1" placeholder="0s" style="width:60px" title="seconds">
+          </div>
+        </div>
+        <div class="modal-field">
+          <label for="ee-elev">Elev gain</label>
+          <input id="ee-elev" type="number" step="any" title="in your selected unit">
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label for="ee-effort">Effort (1-10)</label>
+          <input id="ee-effort" type="number" min="1" max="10">
+        </div>
+        <div class="modal-field" style="flex:2;">
+          <label for="ee-notes">Notes</label>
+          <input id="ee-notes" type="text">
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="ee-cancel">Cancel</button>
+        <button class="btn primary" id="ee-save">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Run Modal -->
+  <div id="edit-run-modal" class="modal-backdrop hidden">
+    <div class="modal-box">
+      <h2>Edit run</h2>
+      <div class="modal-row">
+        <div class="modal-field" style="flex:2;">
+          <label for="er-name">Run name</label>
+          <input id="er-name" type="text">
+        </div>
+        <div class="modal-field">
+          <label for="er-location">Location</label>
+          <input id="er-location" type="text" list="location-list-edit">
+        </div>
+      </div>
+      <datalist id="location-list-edit"></datalist>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label for="er-surface">Surface</label>
+          <input id="er-surface" type="text" list="surface-list-edit">
+        </div>
+        <div class="modal-field">
+          <label for="er-type">Workout type</label>
+          <input id="er-type" type="text" list="type-list-edit">
+        </div>
+      </div>
+      <datalist id="surface-list-edit"></datalist>
+      <datalist id="type-list-edit"></datalist>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label for="er-distance">Distance</label>
+          <input id="er-distance" type="number" min="0" step="any" title="in your selected unit">
+        </div>
+        <div class="modal-field">
+          <label>Duration</label>
+          <div style="display:flex;gap:4px;">
+            <input id="er-dur-h" type="number" min="0" step="1" placeholder="0h" style="width:60px">
+            <input id="er-dur-m" type="number" min="0" max="59" step="1" placeholder="25m" style="width:60px">
+            <input id="er-dur-s" type="number" min="0" max="59" step="1" placeholder="0s" style="width:60px">
+          </div>
+        </div>
+        <div class="modal-field">
+          <label for="er-elev">Elev gain</label>
+          <input id="er-elev" type="number" step="any" title="in your selected unit">
+        </div>
+      </div>
+      <div class="modal-row">
+        <div class="modal-field">
+          <label for="er-shoes">Shoes</label>
+          <input id="er-shoes" type="text" list="shoes-list-edit">
+        </div>
+      </div>
+      <datalist id="shoes-list-edit"></datalist>
+      <p class="modal-hint">Changing distance, duration, elevation, or shoes updates all entries logged for this run.</p>
+      <div class="modal-actions">
+        <button class="btn" id="er-cancel">Cancel</button>
+        <button class="btn primary" id="er-save">Save</button>
+      </div>
+    </div>
+  </div>
+
   <footer class="note">Data stays in your browser. Click "Save file" to download the updated JSON.</footer>
 </div>
 
@@ -728,6 +855,7 @@ function renderSuggestionLists() {
   fillList("brand-list", uniqueValues(brands));
   const shoes = Object.values(DB.shoes).map(s => s.name);
   fillList("shoes-list", uniqueValues(shoes));
+  syncEditDatalists();
 }
 
 function renderRunList() {
@@ -831,6 +959,30 @@ window.delEntry = function(id) {
   if (!confirm("Delete this run?")) return;
   DB.entries = DB.entries.filter(e => e.id !== id);
   renderAll();
+};
+
+window.editEntry = function(id) {
+  const entry = DB.entries.find(e => e.id === id);
+  if (!entry) return;
+
+  const runSelect = document.getElementById("ee-run");
+  runSelect.innerHTML = Object.entries(DB.runs)
+    .sort((a, b) => a[1].name.localeCompare(b[1].name))
+    .map(([rid, r]) => `<option value="${rid}"${rid === entry.runId ? " selected" : ""}>${esc(r.name)}</option>`)
+    .join("");
+
+  document.getElementById("ee-datetime").value = entry.datetime || "";
+  document.getElementById("ee-distance").value = entry.distanceM ? mToNum(entry.distanceM).toFixed(2) : "";
+  const dur = entry.durationS || 0;
+  document.getElementById("ee-dur-h").value = dur ? Math.floor(dur / 3600) : "";
+  document.getElementById("ee-dur-m").value = dur ? Math.floor((dur % 3600) / 60) : "";
+  document.getElementById("ee-dur-s").value = dur ? Math.round(dur % 60) : "";
+  document.getElementById("ee-elev").value = entry.elevGainM ? eleMToNum(entry.elevGainM).toFixed(0) : "";
+  document.getElementById("ee-effort").value = entry.effort ?? "";
+  document.getElementById("ee-notes").value = entry.notes || "";
+
+  document.getElementById("edit-entry-modal").classList.remove("hidden");
+  document.getElementById("edit-entry-modal")._entryId = id;
 };
 
 /* ================= Add form ================= */
@@ -1035,7 +1187,12 @@ function renderShoeChart() {
   for (const k in source) {
     for (const e of source[k]) {
       const r = DB.runs[e.runId];
-      const shoeName = (r && shoeById(r.shoesId)) ? shoeById(r.shoesId).name : "(no shoes)";
+      let shoeName = "(no shoes)";
+      if (r && r.shoesId && DB.shoes[r.shoesId]) {
+        shoeName = DB.shoes[r.shoesId].name;
+      } else if (r && r.shoesId) {
+        shoeName = "(unknown shoe)";
+      }
       const v = mToNum(e.distanceM || 0);
       totalNum += v;
       buckets[k] = buckets[k] || {};
@@ -1337,22 +1494,110 @@ window.toggleRun = function(id) {
   else expandedRuns.add(id);
   renderRunsList();
 };
+function syncEditDatalists() {
+  const locs = [], surfs = [], types = [], shoes = [];
+  for (const id in DB.runs) {
+    const r = DB.runs[id];
+    if (r.location) locs.push(r.location);
+    if (r.surface) surfs.push(r.surface);
+    if (r.workoutType) types.push(r.workoutType);
+  }
+  for (const id in DB.shoes) shoes.push(DB.shoes[id].name);
+  fillList("location-list-edit", uniqueValues(locs));
+  fillList("surface-list-edit", uniqueValues([...SURFACE_SUGGESTIONS, ...surfs]));
+  fillList("type-list-edit", uniqueValues([...TYPE_SUGGESTIONS, ...types]));
+  fillList("shoes-list-edit", uniqueValues(shoes));
+}
+function closeModals() {
+  document.getElementById("edit-entry-modal").classList.add("hidden");
+  document.getElementById("edit-run-modal").classList.add("hidden");
+}
+document.getElementById("ee-cancel").addEventListener("click", closeModals);
+document.getElementById("er-cancel").addEventListener("click", closeModals);
+document.querySelectorAll(".modal-backdrop").forEach(bd => {
+  bd.addEventListener("click", e => { if (e.target === bd) closeModals(); });
+});
+document.getElementById("ee-save").addEventListener("click", () => {
+  const entry = DB.entries.find(e => e.id === document.getElementById("edit-entry-modal")._entryId);
+  if (!entry) { closeModals(); return; }
+  entry.runId = document.getElementById("ee-run").value;
+  entry.datetime = document.getElementById("ee-datetime").value || entry.datetime;
+  const d = parseFloat(document.getElementById("ee-distance").value);
+  entry.distanceM = d > 0 ? numToM(d) : 0;
+  const eh = parseInt(document.getElementById("ee-dur-h").value || "0", 10);
+  const em = parseInt(document.getElementById("ee-dur-m").value || "0", 10);
+  const es = parseInt(document.getElementById("ee-dur-s").value || "0", 10);
+  entry.durationS = (isFinite(eh) && eh >= 0 ? eh * 3600 : 0) + (isFinite(em) && em >= 0 ? em * 60 : 0) + (isFinite(es) && es >= 0 ? es : 0);
+  const el = parseFloat(document.getElementById("ee-elev").value);
+  entry.elevGainM = el > 0 ? numToEleM(el) : 0;
+  entry.effort = clamp10(document.getElementById("ee-effort").value);
+  entry.notes = document.getElementById("ee-notes").value.trim();
+  closeModals();
+  renderAll();
+});
+document.getElementById("er-save").addEventListener("click", () => {
+  const r = DB.runs[document.getElementById("edit-run-modal")._runId];
+  if (!r) { closeModals(); return; }
+  const name = document.getElementById("er-name").value.trim();
+  if (!name) return;
+  r.name = name;
+  r.location = document.getElementById("er-location").value.trim();
+  r.surface = document.getElementById("er-surface").value.trim().toLowerCase();
+  r.workoutType = document.getElementById("er-type").value.trim();
+  const d = parseFloat(document.getElementById("er-distance").value);
+  const newDistM = d > 0 ? numToM(d) : 0;
+  const ehr = parseInt(document.getElementById("er-dur-h").value || "0", 10);
+  const emr = parseInt(document.getElementById("er-dur-m").value || "0", 10);
+  const esr = parseInt(document.getElementById("er-dur-s").value || "0", 10);
+  const newDurS = (isFinite(ehr) && ehr >= 0 ? ehr * 3600 : 0) + (isFinite(emr) && emr >= 0 ? emr * 60 : 0) + (isFinite(esr) && esr >= 0 ? esr : 0);
+  const el = parseFloat(document.getElementById("er-elev").value);
+  const newElevM = el > 0 ? numToEleM(el) : 0;
+  const shoeName = document.getElementById("er-shoes").value.trim();
+  let newShoesId = r.shoesId;
+  if (shoeName) newShoesId = shoeIdForName(shoeName);
+  else newShoesId = "";
+
+  const runId = document.getElementById("edit-run-modal")._runId;
+  const distChanged = newDistM !== r.distanceM;
+  const durChanged = newDurS !== r.durationS;
+  const elevChanged = newElevM !== r.elevGainM;
+  const shoeChanged = newShoesId !== r.shoesId;
+
+  r.distanceM = newDistM;
+  r.durationS = newDurS;
+  r.elevGainM = newElevM;
+  r.shoesId = newShoesId;
+
+  if (distChanged || durChanged || elevChanged || shoeChanged) {
+    for (const e of DB.entries) {
+      if (e.runId === runId) {
+        if (distChanged) e.distanceM = newDistM;
+        if (durChanged) e.durationS = newDurS;
+        if (elevChanged) e.elevGainM = newElevM;
+      }
+    }
+  }
+  closeModals();
+  renderAll();
+});
 window.editRun = function(id) {
   const r = DB.runs[id];
   if (!r) return;
-  const name = prompt("Run name:", r.name);
-  if (name === null) return;
-  const loc = prompt("Location:", r.location || "");
-  if (loc === null) return;
-  const surface = prompt("Surface:", r.surface || "");
-  if (surface === null) return;
-  const type = prompt("Workout type:", r.workoutType || "");
-  if (type === null) return;
-  r.name = name;
-  r.location = loc;
-  r.surface = surface;
-  r.workoutType = type;
-  renderAll();
+
+  document.getElementById("er-name").value = r.name;
+  document.getElementById("er-location").value = r.location || "";
+  document.getElementById("er-surface").value = r.surface || "";
+  document.getElementById("er-type").value = r.workoutType || "";
+  document.getElementById("er-distance").value = r.distanceM ? mToNum(r.distanceM).toFixed(2) : "";
+  const dur = r.durationS || 0;
+  document.getElementById("er-dur-h").value = dur ? Math.floor(dur / 3600) : "";
+  document.getElementById("er-dur-m").value = dur ? Math.floor((dur % 3600) / 60) : "";
+  document.getElementById("er-dur-s").value = dur ? Math.round(dur % 60) : "";
+  document.getElementById("er-elev").value = r.elevGainM ? eleMToNum(r.elevGainM).toFixed(0) : "";
+  document.getElementById("er-shoes").value = (shoeById(r.shoesId) ? shoeById(r.shoesId).name : "") || "";
+
+  document.getElementById("edit-run-modal").classList.remove("hidden");
+  document.getElementById("edit-run-modal")._runId = id;
 };
 window.delRun = function(id) {
   const used = DB.entries.some(e => e.runId === id);
